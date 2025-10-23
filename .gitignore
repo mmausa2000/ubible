@@ -53,3 +53,6 @@ build/
 vendor/
 node_modules/
 go.work
+files_list.txt
+full_codebase.txt
+*.bak
