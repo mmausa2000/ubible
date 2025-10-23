@@ -1749,11 +1749,14 @@ Examples:
 
         async function loadThemesNoCache() {
             try {
+                console.log('loadThemesNoCache: Fetching themes from API...');
                 const response = await fetch('/api/themes?ts=' + Date.now(), {
                     headers: { 'Cache-Control': 'no-store' }
                 });
                 const data = await response.json();
+                console.log('loadThemesNoCache: API response:', data);
                 if (!data.success || !data.themes) throw new Error('Failed to load themes');
+                console.log('loadThemesNoCache: Loaded', data.themes.length, 'themes');
                 availableThemes = data.themes;
                 renderThemes();
             } catch (error) {
@@ -1766,7 +1769,10 @@ Examples:
             const grid = document.getElementById('themeGrid');
             const savedThemes = JSON.parse(localStorage.getItem('selectedThemes') || '[]');
 
+            console.log('renderThemes: availableThemes =', availableThemes);
+
             if (!Array.isArray(availableThemes) || availableThemes.length === 0) {
+                console.log('renderThemes: No themes available');
                 grid.innerHTML = '<div style="color: rgba(255,255,255,0.7); padding: 40px;">No themes available</div>';
                 return;
             }
@@ -1775,6 +1781,8 @@ Examples:
                 ...theme,
                 disabled: Number(theme.question_count) < 5
             }));
+            
+            console.log('renderThemes: Rendering', validThemes.length, 'themes');
 
             grid.innerHTML = validThemes.map(theme => {
                 const isActiveChip = savedThemes.includes(theme.name);
@@ -2326,12 +2334,23 @@ Examples:
                 });
 
                 if (!response.ok) {
-                    throw new Error(`Failed to save: ${response.statusText}`);
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `Failed to save: ${response.statusText}`);
                 }
 
+                const result = await response.json();
+                console.log('Theme saved successfully:', result);
+                
                 showToast(`Theme "${themeName}" created!`, '✨');
                 closeThemeCreator();
-                setTimeout(() => refreshThemes(), 500);
+                
+                // Wait longer for database to sync and then refresh
+                console.log('Refreshing theme list...');
+                setTimeout(async () => {
+                    console.log('Calling refreshThemes()');
+                    await refreshThemes();
+                    console.log('Theme list refreshed');
+                }, 1000);
             } catch (error) {
                 console.error('Error saving theme:', error);
                 alert(`Failed to save theme: ${error.message}`);

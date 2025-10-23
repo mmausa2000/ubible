@@ -2,10 +2,10 @@
 package handlers
 
 import (
-	"ubible/database"
-	"ubible/models"
 	"encoding/json"
 	"log"
+	"ubible/database"
+	"ubible/models"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -104,13 +104,17 @@ func GetTheme(c *fiber.Ctx) error {
 	})
 }
 
-// CreateTheme creates a new theme (requires auth)
+// CreateTheme creates a new theme with verses (requires auth)
 func CreateTheme(c *fiber.Ctx) error {
 	var req struct {
 		Name        string `json:"name"`
 		Description string `json:"description"`
 		Icon        string `json:"icon"`
 		Color       string `json:"color"`
+		Verses      []struct {
+			Reference string `json:"reference"`
+			Text      string `json:"text"`
+		} `json:"verses"`
 	}
 
 	if err := c.BodyParser(&req); err != nil {
@@ -124,6 +128,13 @@ func CreateTheme(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{
 			"success": false,
 			"error":   "Theme name is required",
+		})
+	}
+
+	if len(req.Verses) < 5 {
+		return c.Status(400).JSON(fiber.Map{
+			"success": false,
+			"error":   "At least 5 verses are required",
 		})
 	}
 
@@ -154,10 +165,37 @@ func CreateTheme(c *fiber.Ctx) error {
 		})
 	}
 
+	// Create questions for each verse
+	successCount := 0
+	for i, verse := range req.Verses {
+		if verse.Reference == "" || verse.Text == "" {
+			log.Printf("Skipping verse %d: empty reference or text", i)
+			continue
+		}
+		question := models.Question{
+			ThemeID:       theme.ID,
+			Text:          verse.Text,
+			CorrectAnswer: verse.Reference,
+			WrongAnswers:  "[]", // Empty array for now
+			Reference:     verse.Reference,
+			Difficulty:    "medium",
+		}
+		if err := db.Create(&question).Error; err != nil {
+			log.Printf("Error creating question %d for theme %d: %v", i, theme.ID, err)
+			// Continue creating other questions even if one fails
+		} else {
+			successCount++
+			log.Printf("Created question %d for theme %d: %s", i, theme.ID, verse.Reference)
+		}
+	}
+
+	log.Printf("Theme %d created with %d/%d verses", theme.ID, successCount, len(req.Verses))
+
 	return c.JSON(fiber.Map{
-		"success": true,
-		"message": "Theme created successfully",
-		"theme":   theme,
+		"success":        true,
+		"message":        "Theme created successfully",
+		"theme":          theme,
+		"verses_created": successCount,
 	})
 }
 
