@@ -1,0 +1,1917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>U Bible - Home</title>
+    <script src="/js/settings.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 50%, #16213e 100%);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(76, 175, 80, 0.6);
+            border-radius: 50%;
+            animation: particleFloat 15s infinite linear;
+        }
+
+        @keyframes particleFloat {
+            0% {
+                transform: translateY(100vh) translateX(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100vh) translateX(100px);
+                opacity: 0;
+            }
+        }
+
+        .app-container {
+            width: 95%;
+            max-width: 1500px;
+            height: 90vh;
+            max-height: 850px;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: grid;
+            grid-template-rows: 80px 1fr 80px;
+            overflow: hidden;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
+            position: relative;
+            z-index: 10;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #4caf50, #66bb6a);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            animation: logoGlow 2s ease-in-out infinite;
+        }
+
+        @keyframes logoGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(76, 175, 80, 0.3); }
+            50% { box-shadow: 0 0 30px rgba(76, 175, 80, 0.6); }
+        }
+
+        .app-name h1 {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .app-name p {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.85rem;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 30px;
+        }
+
+        .stat-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            border-radius: 20px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .stat-badge:hover {
+            background: rgba(76, 175, 80, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .stat-badge-icon {
+            font-size: 1.2rem;
+        }
+
+        .stat-badge-value {
+            color: #4caf50;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .stat-badge-label {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.8rem;
+        }
+
+        .content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            overflow: hidden;
+        }
+
+        .welcome-panel {
+            text-align: center;
+            max-width: 900px;
+        }
+
+        .welcome-title {
+            color: white;
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            animation: fadeInUp 0.6s ease;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .welcome-subtitle {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1.2rem;
+            margin-bottom: 60px;
+            animation: fadeInUp 0.8s ease;
+        }
+
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 20px;
+            margin-bottom: 60px;
+            animation: fadeInUp 1s ease;
+        }
+
+        .menu-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px solid transparent;
+            border-radius: 15px;
+            padding: 30px 15px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .menu-card.multiplayer {
+            background: rgba(255, 106, 106, 0.03);
+            border-color: rgba(255, 106, 106, 0.1);
+        }
+
+        .menu-card.multiplayer:hover {
+            background: rgba(255, 106, 106, 0.08);
+            border-color: #ff6b6b;
+        }
+
+        .menu-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(76, 175, 80, 0.3), transparent);
+            transition: left 0.6s;
+        }
+
+        .menu-card.multiplayer::before {
+            background: linear-gradient(90deg, transparent, rgba(255, 106, 106, 0.3), transparent);
+        }
+
+        .menu-card:hover::before {
+            left: 100%;
+        }
+
+        .menu-card:hover {
+            background: rgba(255, 255, 255, 0.06);
+            transform: translateY(-8px);
+            border-color: #4caf50;
+        }
+
+        .menu-icon {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            transition: all 0.3s;
+        }
+
+        .menu-card:hover .menu-icon {
+            background: rgba(255, 255, 255, 0.1);
+            transform: rotate(10deg) scale(1.1);
+        }
+
+        .menu-title {
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .menu-description {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.75rem;
+            text-align: center.
+        }
+
+        .new-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.6rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            animation: pulse 2s ease infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            animation: fadeInUp 1.2s ease;
+        }
+
+        .btn {
+            padding: 15px 40px;
+            border-radius: 25px;
+            border: none;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4caf50, #66bb6a);
+            color: white;
+            box-shadow: 0 8px 20px rgba(76, 175, 80, 0.3);
+            animation: btnGlow 2s ease-in-out infinite;
+        }
+
+        @keyframes btnGlow {
+            0%, 100% { box-shadow: 0 8px 20px rgba(76, 175, 80, 0.3); }
+            50% { box-shadow: 0 8px 30px rgba(76, 175, 80, 0.5); }
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .footer {
+            background: rgba(255, 255, 255, 0.05);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+        }
+
+        .footer-info {
+            display: flex;
+            gap: 30px;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+        }
+
+        .info-icon {
+            color: #4caf50;
+            font-size: 1rem;
+        }
+
+        .info-value {
+            color: white;
+            font-weight: 600;
+        }
+
+        .footer-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .footer-link {
+            color: rgba(255, 255, 255, 0.6);
+            text-decoration: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+
+        .footer-link:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .login-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .login-modal-content {
+            background: linear-gradient(135deg, #2a3050 0%, #3a4570 100%);
+            backdrop-filter: blur(20px);
+            border-radius: 30px;
+            padding: 40px;
+            width: 90%;
+            max-width: 400px;
+            border: 2px solid rgba(76, 175, 80, 0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .login-modal-content h2 {
+            color: white;
+            font-size: 2rem;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .login-subtitle {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .form-group input {
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: white;
+            font-size: 1rem;
+        }
+
+        .form-group input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #4caf50;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .login-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .guest-link {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: color 0.3s;
+            padding: 10px.
+        }
+
+        .guest-link:hover {
+            color: white;
+        }
+
+        .multiplayer-menu-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .multiplayer-menu-content {
+            background: linear-gradient(135deg, #2a3050 0%, #3a4570 100%);
+            backdrop-filter: blur(20px);
+            border-radius: 30px;
+            padding: 40px;
+            text-align: center;
+            border: 2px solid rgba(255, 107, 107, 0.3);
+            min-width: 500px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .multiplayer-menu-content h2 {
+            color: white;
+            font-size: 2rem;
+            margin-bottom: 30px;
+            font-weight: 700;
+        }
+
+        .multiplayer-options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin: 30px 0;
+        }
+
+        .multiplayer-option-btn {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+        }
+
+        .multiplayer-option-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #ff6b6b;
+            transform: translateX(10px);
+        }
+
+        .option-icon {
+            font-size: 2.5rem;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+        }
+
+        .option-text {
+            text-align: left;
+            flex: 1;
+        }
+
+        .option-text h3 {
+            color: white;
+            font-size: 1.2rem;
+            margin-bottom: 5px;
+        }
+
+        .option-text p {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+        }
+
+        .multiplayer-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .multiplayer-modal-content {
+            background: linear-gradient(135deg, #2a3050 0%, #3a4570 100%);
+            backdrop-filter: blur(20px);
+            border-radius: 30px;
+            padding: 40px;
+            text-align: center;
+            border: 2px solid rgba(255, 107, 107, 0.3);
+            min-width: 400px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .multiplayer-modal-content h2 {
+            color: white;
+            font-size: 2rem;
+            margin-bottom: 30px;
+            font-weight: 700;
+        }
+
+        .room-code-input {
+            width: 100%;
+            padding: 20px;
+            font-size: 2rem;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            color: white;
+            letter-spacing: 10px;
+            margin: 20px 0;
+            text-transform: uppercase;
+        }
+
+        .room-code-input:focus {
+            outline: none;
+            border-color: #ff6b6b;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .room-code-display {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 20px 0;
+        }
+
+        .room-code-large {
+            font-size: 3rem;
+            font-weight: 700;
+            color: #ff6b6b;
+            letter-spacing: 15px;
+            margin: 20px 0;
+        }
+
+        .copy-btn {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.5);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .copy-btn:hover {
+            background: rgba(76, 175, 80, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .players-in-room {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin: 30px 0;
+        }
+
+        .player-slot {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px.
+        }
+
+        .player-status {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255, 255, 255, 0.5);
+            font-weight: 700;
+        }
+
+        .player-status.ready {
+            background: #4caf50;
+            color: white;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .waiting-spinner {
+            margin: 30px auto;
+            position: relative;
+            width: 80px;
+            height: 80px;
+        }
+
+        .spinner {
+            width: 80px;
+            height: 80px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #ff6b6b;
+            border-right-color: #ff6b6b;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .multiplayer-modal-content p {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.1rem;
+            margin: 20px 0;
+        }
+
+        .match-found-notification {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10001;
+            animation: fadeIn 0.3s ease.
+        }
+
+        .match-found-content {
+            background: linear-gradient(135deg, #2a3050 0%, #3a4570 100%);
+            backdrop-filter: blur(20px);
+            border-radius: 30px;
+            padding: 50px;
+            text-align: center;
+            border: 3px solid #ff6b6b;
+            box-shadow: 0 0 100px rgba(255, 107, 107, 0.5);
+            animation: matchPulse 0.5s ease;
+        }
+
+        @keyframes matchPulse {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .match-found-content h2 {
+            color: white;
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            font-weight: 700;
+            animation: glow 2s ease-in-out infinite;
+        }
+
+        .match-found-content p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.2rem;
+            margin: 10px 0;
+        }
+
+        @keyframes glow {
+            0%, 100% { text-shadow: 0 0 20px rgba(255, 107, 107, 0.5); }
+            50% { text-shadow: 0 0 40px rgba(255, 107, 107, 0.8); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @media (max-width: 1200px) {
+            .menu-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                grid-template-rows: 70px 1fr 70px;
+            }
+            
+            .header-stats {
+                display: none;
+            }
+            
+            .menu-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .welcome-title {
+                font-size: 2rem;
+            }
+            
+            .quick-actions {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+
+            .multiplayer-modal-content,
+            .multiplayer-menu-content {
+                min-width: 90%;
+                padding: 30px 20px;
+            }
+            
+            .match-found-content {
+                padding: 30px 20px;
+            }
+
+            .login-modal-content {
+                max-width: 90%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="particles" id="particles"></div>
+
+    <div class="login-modal" id="loginModal">
+        <div class="login-modal-content">
+            <h2>Welcome to U Bible</h2>
+            <p class="login-subtitle">Sign in to track your progress and compete</p>
+            <form class="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="username" placeholder="Enter your username" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" placeholder="Enter your password" required autocomplete="current-password">
+                </div>
+                <div class="login-actions">
+                    <button type="submit" class="btn btn-primary">Login</button>
+                    <button type="button" class="btn btn-secondary" onclick="showRegister()">Register</button>
+                    <div class="guest-link" onclick="continueAsGuest()">Continue as Guest</div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="app-container">
+        <div class="header">
+            <div class="logo-area">
+                <div class="logo">📖</div>
+                <div class="app-name">
+                    <h1>U Bible</h1>
+                    <p>Interactive Scripture Learning</p>
+                </div>
+            </div>
+            
+            <div class="header-stats">
+                <div class="stat-badge" onclick="openLoginModal()" style="cursor: pointer;">
+                    <span class="stat-badge-icon">👤</span>
+                    <div>
+                        <div class="stat-badge-value" id="playerNameDisplay">Guest</div>
+                        <div class="stat-badge-label">Player</div>
+                    </div>
+                </div>
+                <div class="stat-badge">
+                    <span class="stat-badge-icon">🏆</span>
+                    <div>
+                        <div class="stat-badge-value" id="rank">--</div>
+                        <div class="stat-badge-label">Rank</div>
+                    </div>
+                </div>
+                <div class="stat-badge">
+                    <span class="stat-badge-icon">📚</span>
+                    <div>
+                        <div class="stat-badge-value" id="themeCount">0</div>
+                        <div class="stat-badge-label">Themes</div>
+                    </div>
+                </div>
+                <div class="stat-badge">
+                    <span class="stat-badge-icon">📖</span>
+                    <div>
+                        <div class="stat-badge-value" id="verseCount">0</div>
+                        <div class="stat-badge-label">Verses</div>
+                    </div>
+                </div>
+                <div class="stat-badge">
+                    <span class="stat-badge-icon">✨</span>
+                    <div>
+                        <div class="stat-badge-value" id="bestScore">--</div>
+                        <div class="stat-badge-label">Best</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="welcome-panel">
+                <h1 class="welcome-title">Welcome to U Bible</h1>
+                <p class="welcome-subtitle">Master scripture through interactive practice sessions</p>
+                
+                <div class="menu-grid">
+                    <div class="menu-card" onclick="quickStart()">
+                        <div class="menu-icon">⚡</div>
+                        <div class="menu-title">Quick Start</div>
+                        <div class="menu-description">Jump right in</div>
+                    </div>
+                    
+                    <div class="menu-card multiplayer" onclick="startMultiplayer()">
+                        <span class="new-badge">New!</span>
+                        <div class="menu-icon">⚔️</div>
+                        <div class="menu-title">Multiplayer</div>
+                        <div class="menu-description">Race others live</div>
+                    </div>
+                    
+                    <div class="menu-card" onclick="viewChallenges()">
+                     <div class="menu-icon">🎯</div>
+                     <div class="menu-title">Challenges</div>
+                     <div class="menu-description">Beat friend scores</div>
+                    </div>
+
+                    <div class="menu-card" onclick="location.href='/practice.html'">
+                        <div class="menu-icon">📚</div>
+                        <div class="menu-title">Practice</div>
+                        <div class="menu-description">Study themes</div>
+                    </div>
+                    
+                    <div class="menu-card" onclick="location.href='/settings.html'">
+                        <div class="menu-icon">⚙️</div>
+                        <div class="menu-title">Settings</div>
+                        <div class="menu-description">Configure quiz</div>
+                    </div>
+                </div>
+                
+                <div class="quick-actions">
+                    <button class="btn btn-primary" onclick="startPractice()">
+                        Start Practice Session →
+                    </button>
+                    <button class="btn btn-secondary" onclick="startMultiplayer()">
+                        Find Opponent
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="footer-info">
+                <div class="info-item">
+                    <span class="info-icon">📊</span>
+                    <span>Version <span class="info-value">2.0.0</span></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-icon">⏰</span>
+                    <span>Last played: <span class="info-value" id="lastPlayed">Never</span></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-icon">🌐</span>
+                    <span>Players online: <span class="info-value" id="playersOnline">--</span></span>
+                </div>
+            </div>
+            
+            <div class="footer-actions">
+                <a href="#" class="footer-link" id="loginLink" onclick="openLoginModal(); return false;">Login</a>
+                <a href="#" class="footer-link" id="logoutLink" onclick="logout(); return false;" style="display: none;">Logout</a>
+                <a href="#" class="footer-link" onclick="showHelp(); return false;">Help</a>
+                <a href="#" class="footer-link" onclick="showAbout(); return false;">About</a>
+                <a href="#" class="footer-link" onclick="resetData(); return false;">Reset Data</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==============================
+        // Toast notifications
+        // ==============================
+        function showSuccess(message) {
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 30px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #4caf50;
+                color: white;
+                padding: 15px 30px;
+                border-radius: 25px;
+                z-index: 10000;
+                animation: slideUp 0.3s ease;
+            `;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function showError(message) {
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 30px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #f44336;
+                color: white;
+                padding: 15px 30px;
+                border-radius: 25px;
+                z-index: 10000;
+                animation: slideUp 0.3s ease;
+            `;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // ==============================
+        // Multiplayer Manager (single source of truth)
+        // ==============================
+        class MultiplayerManager {
+            constructor() {
+                this.ws = null;
+                this.currentGame = null;
+                this.currentRoomCode = null;
+                this.isHost = false;
+                this.isConnected = false;
+                this.hostIsPlaying = true;
+
+                let storedPlayerId = localStorage.getItem('playerId');
+                if (!storedPlayerId) {
+                    storedPlayerId = 'player_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+                    localStorage.setItem('playerId', storedPlayerId);
+                }
+                this.playerId = storedPlayerId;
+
+                this.playerName = localStorage.getItem('playerName') || ('Player' + Math.floor(Math.random() * 1000));
+                this.reconnectAttempts = 0;
+                this.maxReconnectAttempts = 5;
+                this.reconnectTimeout = null;
+            }
+
+            connect() {
+                if (this.isConnected) return;
+                try {
+                    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                    const wsUrl = `${protocol}//${window.location.host}/ws?player_id=${this.playerId}&username=${encodeURIComponent(this.playerName)}`;
+                    this.ws = new WebSocket(wsUrl);
+                    this.setupEventHandlers();
+                } catch (error) {
+                    console.error('Failed to connect:', error);
+                    showError('Connection failed. Please refresh the page.');
+                }
+            }
+
+            setupEventHandlers() {
+                this.ws.onopen = () => {
+                    this.isConnected = true;
+                    this.reconnectAttempts = 0;
+                };
+
+                this.ws.onclose = () => {
+                    this.isConnected = false;
+                    this.attemptReconnect();
+                };
+
+                this.ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                };
+
+                this.ws.onmessage = (event) => {
+                    try {
+                        const message = JSON.parse(event.data);
+                        this.handleMessage(message);
+                    } catch (error) {
+                        console.error('Failed to parse message:', error);
+                    }
+                };
+            }
+
+        handleMessage(message) {
+            const payload = typeof message.payload === 'string'
+                ? (message.payload ? JSON.parse(message.payload) : {})
+                : (message.payload || {});
+
+            switch (message.type) {
+                case 'connected':
+                    break;
+
+                case 'searching':
+                    this.showSearchingModal();
+                    break;
+
+                case 'match_found':
+                    this.handleMatchFound(payload);
+                    break;
+
+                case 'room_created':
+                    this.currentRoomCode = payload.room_code;
+                    this.isHost = true;
+                    this.syncHostPlaying(payload.players);
+                    this.showWaitingRoom(payload.room_code, true);
+                    setTimeout(() => {
+                        this.updatePlayerList(payload);
+                    }, 100);
+                    break;
+
+                case 'room_joined':
+                    this.syncHostPlaying(payload.players);
+                    this.showWaitingRoom(payload.room_code, false);
+                    setTimeout(() => {
+                        this.updatePlayerList(payload);
+                    }, 100);
+                    break;
+
+                case 'player_joined':
+                    this.syncHostPlaying(payload.players);
+                    this.updatePlayerList(payload);
+                    break;
+
+                case 'room_update':
+                    this.syncHostPlaying(payload.players);
+                    this.updatePlayerList(payload);
+                    break;
+
+                case 'player_ready_update':
+                    this.syncHostPlaying(payload.players);
+                    this.updatePlayerList(payload);
+                    break;
+
+                case 'game_start':
+                    this.currentGame = payload;
+                    localStorage.setItem('multiplayerGame', JSON.stringify({
+                        gameId: payload.game_id,
+                        questions: payload.questions,
+                        players: payload.players,
+                        isMultiplayer: true
+                    }));
+                    this.closeAllModals();
+                    this.showMatchFoundNotification();
+                    setTimeout(() => { window.location.href = '/quiz.html'; }, 1200);
+                    break;
+
+                case 'error':
+                    showError(payload.error || message.error || 'An error occurred');
+                    break;
+
+                case 'ping':
+                    this.send('pong', {});
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+            send(type, payload) {
+                if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+                    return;
+                }
+                // IMPORTANT: send payload as an object (not a string) to match Go server expectations
+                this.ws.send(JSON.stringify({ type, payload: payload || {} }));
+            }
+
+            quickMatch() {
+                // Show immediately; connect in background
+                this.showSearchingModal();
+                if (!this.isConnected) {
+                    this.connect();
+                    setTimeout(() => this.findMatch(), 200);
+                    return;
+                }
+                this.findMatch();
+            }
+
+findMatch() {
+    if (!this.isConnected) {
+        this.connect();
+        setTimeout(() => this.findMatch(), 300);
+        return;
+    }
+    const selectedThemes = JSON.parse(localStorage.getItem('selectedThemes') || '[]');
+    
+    // ✅ FIXED: Standardized multiplayer settings
+    // - 10 seconds per question (fast-paced competitive play)
+    // - 20 questions (substantial game length)
+    // This ensures all players match with the same settings
+    // Increases matchmaking pool and reduces wait times
+    this.send('find_match', {
+        selected_themes: selectedThemes.length > 0 ? selectedThemes : ['Faith', 'Love', 'Hope', 'Wisdom'],
+        question_count: 20,  // ← Always 20 questions
+        time_limit: 10       // ← Always 10 seconds per question
+    });
+}
+
+            createPrivateRoom() {
+                if (!this.isConnected) {
+                    this.connect();
+                    setTimeout(() => this.createPrivateRoom(), 300);
+                    return;
+                }
+
+                this.showRoomSettingsModal();
+            }
+
+            showRoomSettingsModal() {
+                this.closeMenu();
+                if (document.getElementById('roomSettingsModal')) return;
+
+                const settingsHTML = `
+                    <div id="roomSettingsModal" class="multiplayer-modal">
+                        <div class="multiplayer-modal-content">
+                            <h2>🏠 Create Private Room</h2>
+                            <p style="color: rgba(255, 255, 255, 0.7); margin-bottom: 25px;">
+                                Configure your game settings
+                            </p>
+
+                            <div class="room-settings-form">
+                                <div class="setting-group" style="margin-bottom: 20px;">
+                                    <label style="color: white; font-weight: 600; margin-bottom: 10px; display: block;">
+                                        Maximum Players
+                                    </label>
+                                    <select id="maxPlayersSelect" style="width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.2); border-radius: 10px; color: white; font-size: 1rem;">
+                                        <option value="2">2 Players</option>
+                                        <option value="3">3 Players</option>
+                                        <option value="4">4 Players</option>
+                                        <option value="5" selected>5 Players</option>
+                                        <option value="6">6 Players</option>
+                                        <option value="7">7 Players</option>
+                                        <option value="8">8 Players</option>
+                                        <option value="9">9 Players</option>
+                                        <option value="10">10 Players</option>
+                                    </select>
+                                </div>
+
+                                <div class="setting-group" style="margin-bottom: 25px; padding: 15px; background: rgba(76, 175, 80, 0.1); border-radius: 10px; border: 1px solid rgba(76, 175, 80, 0.3);">
+                                    <label style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
+                                        <input type="checkbox" id="hostPlayingCheckbox" ${this.hostIsPlaying ? 'checked' : ''}
+                                               style="width: 20px; height: 20px; cursor: pointer;">
+                                        <div>
+                                            <div style="font-weight: 600; color: white;">I'm playing in this game</div>
+                                            <div style="color: rgba(255, 255, 255, 0.7); font-size: 0.85rem;">
+                                                Uncheck to spectate only
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="modal-buttons">
+                                <button class="btn btn-secondary" onclick="multiplayerManager.closeRoomSettingsModal()">
+                                    Cancel
+                                </button>
+                                <button class="btn btn-primary" onclick="multiplayerManager.confirmCreateRoom()">
+                                    Create Room
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', settingsHTML);
+            }
+
+            closeRoomSettingsModal() {
+                const modal = document.getElementById('roomSettingsModal');
+                if (modal) modal.remove();
+            }
+
+            confirmCreateRoom() {
+                const maxPlayersSelect = document.getElementById('maxPlayersSelect');
+                const hostPlayingCheckbox = document.getElementById('hostPlayingCheckbox');
+
+                const maxPlayers = parseInt(maxPlayersSelect?.value, 10) || 5;
+                const hostIsPlaying = hostPlayingCheckbox ? hostPlayingCheckbox.checked : true;
+
+                this.hostIsPlaying = hostIsPlaying;
+
+                const selectedThemes = JSON.parse(localStorage.getItem('selectedThemes') || '[]');
+                const settings = JSON.parse(localStorage.getItem('quizSettings') || '{}');
+
+                this.send('create_room', {
+                    username: this.playerName,
+                    selected_themes: selectedThemes.length > 0 ? selectedThemes : ['Faith', 'Love', 'Hope', 'Wisdom'],
+                    question_count: settings.questionCount || 10,
+                    time_limit: settings.timeLimit || 30,
+                    max_players: maxPlayers,
+                    host_is_playing: hostIsPlaying
+                });
+
+                this.closeRoomSettingsModal();
+            }
+
+            syncHostPlaying(players) {
+                if (!Array.isArray(players)) return;
+                const host = players.find(p => p.is_host);
+                if (host && typeof host.is_playing === 'boolean') {
+                    this.hostIsPlaying = host.is_playing;
+                }
+            }
+
+            showJoinRoom() {
+                this.closeMenu();
+                if (document.getElementById('joinRoomModal')) return;
+                const joinHTML = `
+                    <div id="joinRoomModal" class="multiplayer-modal">
+                        <div class="multiplayer-modal-content">
+                            <h2>🔑 Join Private Room</h2>
+                            <p>Enter the 6-character room code</p>
+                            <input type="text" 
+                                   id="roomCodeInput" 
+                                   class="room-code-input" 
+                                   placeholder="ABC123" 
+                                   maxlength="6"
+                                   oninput="this.value=this.value.toUpperCase()"
+                                   onkeypress="if(event.key==='Enter') multiplayerManager.joinRoom()">
+                            <div class="modal-buttons">
+                                <button class="btn btn-secondary" onclick="multiplayerManager.closeJoinModal()">Back</button>
+                                <button class="btn btn-primary" onclick="multiplayerManager.joinRoom()">Join Room</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', joinHTML);
+                setTimeout(() => {
+                    const input = document.getElementById('roomCodeInput');
+                    if (input) input.focus();
+                }, 50);
+            }
+
+            joinRoom() {
+                const input = document.getElementById('roomCodeInput');
+                const roomCode = (input?.value || '').toUpperCase().trim();
+                if (roomCode.length !== 6) {
+                    showError('Please enter a valid 6-character room code');
+                    return;
+                }
+                if (!this.isConnected) {
+                    this.connect();
+                    setTimeout(() => this.joinRoom(), 300);
+                    return;
+                }
+                const selectedThemes = JSON.parse(localStorage.getItem('selectedThemes') || '[]');
+                const settings = JSON.parse(localStorage.getItem('quizSettings') || '{}');
+                this.send('join_room', {
+                    room_code: roomCode,
+                    username: this.playerName,
+                    selected_themes: selectedThemes.length > 0 ? selectedThemes : ['Faith', 'Love', 'Hope', 'Wisdom'],
+                    question_count: settings.questionCount || 10,
+                    time_limit: settings.timeLimit || 30
+                });
+                this.closeJoinModal();
+                this.currentRoomCode = roomCode;
+                this.isHost = false;
+            }
+
+            toggleReady() {
+                if (this.isHost) {
+                    this.startGame();
+                } else {
+                    this.send('player_ready', { is_ready: true });
+                    const btn = document.getElementById('readyBtn');
+                    if (btn) { btn.textContent = 'Waiting...'; btn.disabled = true; }
+                    const guest = document.getElementById('guestStatus');
+                    if (guest) { guest.textContent = '✓'; guest.classList.add('ready'); }
+                }
+            }
+
+            startGame() {
+                this.send('start_game', {});
+            }
+
+            leaveRoom() {
+                this.send('leave_room', {});
+                this.closeAllModals();
+                this.currentRoomCode = null;
+                this.isHost = false;
+            }
+
+            cancelSearch() {
+                this.send('cancel_matchmaking', {});
+                this.closeAllModals();
+            }
+
+            copyRoomCode() {
+                const code = this.currentRoomCode;
+                if (!code) return;
+                navigator.clipboard.writeText(code)
+                    .then(() => showSuccess(`Room code ${code} copied!`))
+                    .catch(() => showError('Failed to copy code'));
+            }
+
+            showMenu() {
+                // Show immediately without delay
+                if (document.getElementById('multiplayerMenu')) return;
+                if (!this.isConnected) this.connect();
+                const menuHTML = `
+                    <div id="multiplayerMenu" class="multiplayer-menu-modal">
+                        <div class="multiplayer-menu-content">
+                            <h2>⚔️ Multiplayer Options</h2>
+                            <div class="multiplayer-options">
+                                <button class="multiplayer-option-btn" onclick="multiplayerManager.quickMatch()">
+                                    <div class="option-icon">⚡</div>
+                                    <div class="option-text">
+                                        <h3>Quick Match</h3>
+                                        <p>Find a random opponent</p>
+                                    </div>
+                                </button>
+                                <button class="multiplayer-option-btn" onclick="multiplayerManager.createPrivateRoom()">
+                                    <div class="option-icon">🏠</div>
+                                    <div class="option-text">
+                                        <h3>Create Room</h3>
+                                        <p>Host a private game</p>
+                                    </div>
+                                </button>
+                                <button class="multiplayer-option-btn" onclick="multiplayerManager.showJoinRoom()">
+                                    <div class="option-icon">🔑</div>
+                                    <div class="option-text">
+                                        <h3>Join Room</h3>
+                                        <p>Enter a room code</p>
+                                    </div>
+                                </button>
+                            </div>
+                            <button class="btn btn-secondary" onclick="multiplayerManager.closeMenu()">Cancel</button>
+                        </div>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', menuHTML);
+            }
+
+            closeMenu() {
+                const menu = document.getElementById('multiplayerMenu');
+                if (menu) menu.remove();
+            }
+
+            closeJoinModal() {
+                const modal = document.getElementById('joinRoomModal');
+                if (modal) modal.remove();
+            }
+
+        showWaitingRoom(roomCode, isHost) {
+            this.currentRoomCode = roomCode;
+            this.isHost = isHost;
+            if (document.getElementById('waitingRoomModal')) return;
+            const waitingHTML = `
+                <div id="waitingRoomModal" class="multiplayer-modal">
+                    <div class="multiplayer-modal-content">
+                        <h2>${isHost ? '🏠 Private Room' : '🔓 Joined Room'}</h2>
+                        <div class="room-code-display">
+                            <p>Room Code:</p>
+                            <div class="room-code-large" id="displayRoomCode">${roomCode}</div>
+                            <button class="copy-btn" onclick="multiplayerManager.copyRoomCode()">📋 Copy Code</button>
+                        </div>
+                        ${isHost && !this.hostIsPlaying ? `
+                            <div style="padding: 12px; background: rgba(255, 193, 7, 0.1); border-radius: 10px; border: 1px solid rgba(255, 193, 7, 0.3); margin: 15px 0;">
+                                <div style="display: flex; align-items: center; gap: 10px; color: #ffc107;">
+                                    <span style="font-size: 1.5rem;">👁️</span>
+                                    <span style="font-weight: 600;">Spectating Mode</span>
+                                </div>
+                                <p style="color: rgba(255, 255, 255, 0.7); font-size: 0.85rem; margin-top: 5px;">
+                                    You're watching this game, not playing
+                                </p>
+                            </div>
+                        ` : ''}
+                        <div id="playersContainer" class="players-in-room">
+                            <!-- Players will be dynamically updated -->
+                        </div>
+                        <button id="readyBtn" class="btn btn-primary" onclick="multiplayerManager.toggleReady()" ${isHost ? 'disabled' : ''}>
+                            ${isHost ? 'Waiting for Players' : 'Ready'}
+                        </button>
+                        <button class="btn btn-secondary" onclick="multiplayerManager.leaveRoom()">Leave Room</button>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', waitingHTML);
+        }
+
+                    updatePlayerList(data) {
+                const container = document.getElementById('playersContainer');
+                if (!container || !data.players) return;
+                
+                container.innerHTML = data.players.map(p => {
+                    const isSpectating = p.is_host && !p.is_playing;
+                    const statusIcon = isSpectating ? '👁️' : (p.is_ready ? '✓' : '○');
+                    const statusClass = p.is_ready ? 'ready' : '';
+                    const hostTag = p.is_host ? ' (Host)' : '';
+                    const spectatingTag = isSpectating ? ' - Spectating' : '';
+                    const youTag = p.player_id === this.playerId ? ' - You' : '';
+
+                    return `
+                        <div class="player-slot" style="${isSpectating ? 'opacity: 0.6; font-style: italic;' : ''}">
+                            <span class="player-status ${statusClass}">
+                                ${statusIcon}
+                            </span>
+                            <span>${p.username}${hostTag}${spectatingTag}${youTag}</span>
+                        </div>
+                    `;
+                }).join('');
+                
+                const btn = document.getElementById('readyBtn');
+                if (btn && this.isHost) {
+                    const playingPlayers = data.players.filter(p => p.is_playing);
+                    const readyPlayingPlayers = playingPlayers.filter(p => p.is_ready);
+
+                    const canStart = playingPlayers.length >= 2 &&
+                                    readyPlayingPlayers.length === playingPlayers.length;
+
+                    btn.disabled = !canStart;
+                    btn.textContent = canStart
+                        ? 'Start Game'
+                        : `Waiting (${readyPlayingPlayers.length}/${playingPlayers.length} ready)`;
+                }
+            }
+                        showSearchingModal() {
+                if (document.getElementById('searchingModal')) return;
+                const modal = document.createElement('div');
+                modal.id = 'searchingModal';
+                modal.className = 'multiplayer-modal';
+                modal.innerHTML = `
+                    <div class="multiplayer-modal-content">
+                        <div class="spinner"></div>
+                        <h2>🔍 Finding Opponent...</h2>
+                        <p>Searching for a player with similar settings</p>
+                        <button class="btn btn-secondary" onclick="multiplayerManager.cancelSearch()">Cancel</button>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
+
+            showMatchFoundNotification() {
+                const notification = document.createElement('div');
+                notification.className = 'match-found-notification';
+                notification.innerHTML = `
+                    <div class="match-found-content">
+                        <h2>⚔️ Match Found!</h2>
+                        <p>Starting game...</p>
+                    </div>
+                `;
+                document.body.appendChild(notification);
+            }
+
+            handleMatchFound(_payload) {
+                this.closeAllModals();
+                this.showMatchFoundNotification();
+            }
+
+            closeAllModals() {
+                ['multiplayerMenu', 'joinRoomModal', 'waitingRoomModal', 'searchingModal'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.remove();
+                });
+            }
+
+            attemptReconnect() {
+                if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+                    return;
+                }
+                this.reconnectAttempts++;
+                const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 10000);
+                clearTimeout(this.reconnectTimeout);
+                this.reconnectTimeout = setTimeout(() => this.connect(), delay);
+            }
+        }
+
+        const multiplayerManager = new MultiplayerManager();
+
+        // ==============================
+        // Auth helpers
+        // ==============================
+        function updateLoginUI() {
+            const playerName = localStorage.getItem('playerName');
+            if (playerName) {
+                document.getElementById('playerNameDisplay').textContent = playerName;
+                document.getElementById('loginLink').style.display = 'none';
+                document.getElementById('logoutLink').style.display = 'block';
+            } else {
+                document.getElementById('playerNameDisplay').textContent = 'Guest';
+                document.getElementById('loginLink').style.display = 'block';
+                document.getElementById('logoutLink').style.display = 'none';
+            }
+        }
+
+        function openLoginModal() {
+            document.getElementById('loginModal').style.display = 'flex';
+            setTimeout(() => {
+                const u = document.getElementById('username');
+                if (u) u.focus();
+            }, 50);
+        }
+
+        async function continueAsGuest() {
+            try {
+                const response = await fetch('/api/auth/guest', { method: 'POST', headers: { 'Content-Type': 'application/json' }});
+                const data = await response.json();
+                if (data.success) {
+                    localStorage.setItem('authToken', data.token);
+                    localStorage.setItem('playerName', data.user.username);
+                    localStorage.setItem('userId', data.user.id);
+                    localStorage.setItem('isGuest', 'true');
+                    localStorage.setItem('hasVisited', 'true');
+                    document.getElementById('loginModal').style.display = 'none';
+                    updateLoginUI();
+                    showSuccess('Welcome, ' + data.user.username + '!');
+                } else {
+                    showError(data.message || 'Failed to create guest session');
+                }
+            } catch (e) {
+                console.error(e);
+                showError('Connection error. Please try again.');
+            }
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            if (!username || !password) {
+                showError('Please enter both username and password');
+                return;
+            }
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    localStorage.setItem('authToken', data.token);
+                    localStorage.setItem('playerName', data.user.username);
+                    localStorage.setItem('userId', data.user.id);
+                    localStorage.setItem('isGuest', 'false');
+                    localStorage.setItem('hasVisited', 'true');
+                    document.getElementById('loginModal').style.display = 'none';
+                    updateLoginUI();
+                    showSuccess('Welcome back, ' + data.user.username + '!');
+                } else {
+                    showError(data.message || 'Login failed');
+                }
+            } catch (e) {
+                console.error(e);
+                showError('Connection error. Please try again.');
+            }
+        }
+
+        function showRegister() {
+            const isGuest = localStorage.getItem('isGuest') === 'true';
+            if (isGuest) {
+                if (confirm('Convert your guest account to a permanent account?')) {
+                    showUpgradeModal();
+                }
+            } else {
+                alert('Registration feature coming soon! For now, use the login to set your username or continue as guest.');
+            }
+        }
+
+        function showUpgradeModal() {
+            const upgradeHTML = `
+                <div id="upgradeModal" class="login-modal" style="display: flex;">
+                    <div class="login-modal-content">
+                        <h2>Upgrade to Full Account</h2>
+                        <p class="login-subtitle">Keep all your progress and stats!</p>
+                        <form class="login-form" onsubmit="handleUpgrade(event)">
+                            <div class="form-group">
+                                <label>Choose Username</label>
+                                <input type="text" id="upgradeUsername" placeholder="Enter your username" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Choose Password</label>
+                                <input type="password" id="upgradePassword" placeholder="Enter your password" required>
+                            </div>
+                            <div class="login-actions">
+                                <button type="submit" class="btn btn-primary">Upgrade Account</button>
+                                <button type="button" class="btn btn-secondary" onclick="closeUpgradeModal()">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            document.getElementById('loginModal').style.display = 'none';
+            document.body.insertAdjacentHTML('beforeend', upgradeHTML);
+        }
+
+        function closeUpgradeModal() {
+            const modal = document.getElementById('upgradeModal');
+            if (modal) modal.remove();
+        }
+
+        async function handleUpgrade(event) {
+            event.preventDefault();
+            const username = document.getElementById('upgradeUsername').value.trim();
+            const password = document.getElementById('upgradePassword').value.trim();
+            if (!username || !password) {
+                showError('Please enter both username and password');
+                return;
+            }
+            try {
+                const token = localStorage.getItem('authToken');
+                const response = await fetch('/api/auth/upgrade-guest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    localStorage.setItem('authToken', data.token);
+                    localStorage.setItem('playerName', data.user.username);
+                    localStorage.setItem('isGuest', 'false');
+                    closeUpgradeModal();
+                    updateLoginUI();
+                    showSuccess('Account upgraded! You can now login with your credentials.');
+                } else {
+                    showError(data.message || 'Upgrade failed');
+                }
+            } catch (e) {
+                console.error(e);
+                showError('Connection error. Please try again.');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('playerName');
+            localStorage.removeItem('userId');
+            localStorage.removeItem('isGuest');
+            localStorage.removeItem('hasVisited');
+            updateLoginUI();
+            openLoginModal();
+            showSuccess('Logged out successfully');
+        }
+
+        // ==============================
+        // Other app functions
+        // ==============================
+        function createParticles() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 20; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 15 + 's';
+                particle.style.animationDuration = (15 + Math.random() * 10) + 's';
+                container.appendChild(particle);
+            }
+        }
+
+        async function fetchHealth() {
+            // Try /health first, fallback to /api/health to avoid 404 noise
+            try {
+                const r1 = await fetch('/health');
+                if (r1.ok) return r1.json();
+            } catch {}
+            try {
+                const r2 = await fetch('/api/health');
+                if (r2.ok) return r2.json();
+            } catch {}
+            return null;
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/verses');
+                const data = await response.json();
+                if (data.success) {
+                    if (Array.isArray(data.themes)) {
+                        document.getElementById('themeCount').textContent = data.themes.length;
+                    }
+                    if (typeof data.totalVerses === 'number') {
+                        document.getElementById('verseCount').textContent = data.totalVerses;
+                    }
+                }
+                const health = await fetchHealth();
+                if (health && (health.waitingPlayers !== undefined) && (health.activeGames !== undefined) && (health.privateRooms !== undefined)) {
+                    const onlineCount = health.waitingPlayers + (health.activeGames * 2) + health.privateRooms;
+                    document.getElementById('playersOnline').textContent = onlineCount;
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+
+            const quizStats = localStorage.getItem('quiz.stats.lifetime');
+            if (quizStats) {
+                try {
+                    const stats = JSON.parse(quizStats);
+                    if (stats.bestAccuracy) {
+                        document.getElementById('bestScore').textContent = Math.round(stats.bestAccuracy) + '%';
+                    }
+                    if (stats.lastPlayedISO) {
+                        const date = new Date(stats.lastPlayedISO);
+                        const today = new Date();
+                        const diffDays = Math.floor((today - date) / (1000 * 60 * 60 * 24));
+                        if (diffDays === 0) {
+                            document.getElementById('lastPlayed').textContent = 'Today';
+                        } else if (diffDays === 1) {
+                            document.getElementById('lastPlayed').textContent = 'Yesterday';
+                        } else if (diffDays < 7) {
+                            document.getElementById('lastPlayed').textContent = diffDays + ' days ago';
+                        } else {
+                            document.getElementById('lastPlayed').textContent = date.toLocaleDateString();
+                        }
+                    }
+                } catch {}
+            }
+
+            // Ensure the stats badges reflect latest settings
+            SettingsManager.updateBadges();
+        }
+
+        function startPractice() {
+            location.href = '/practice.html';
+        }
+
+        function showHelp() {
+            alert('U Bible Help\n\n' +
+                  '⚡ Quick Start - Jump into practice with default settings\n' +
+                  '⚔️ Multiplayer - Race against other players in real-time\n' +
+                  '   • Quick Match - Find random opponent\n' +
+                  '   • Create Room - Get a code to share with friends\n' +
+                  '   • Join Room - Enter a friend\'s room code\n' +
+                  '🎯 Challenges - Share your score and challenge friends\n' +
+                  '📚 Practice - Select themes and practice at your own pace\n' +
+                  '⚙️ Settings - Configure quiz options');
+        }
+
+        function showAbout() {
+            alert('U Bible v2.0.0\n\n' +
+                  'An interactive U Bible verse learning application with multiplayer support.\n\n' +
+                  'Features:\n' +
+                  '• Real-time multiplayer races\n' +
+                  '• Private rooms with shareable codes\n' +
+                  '• Share challenges with friends\n' +
+                  '• Track your progress\n' +
+                  '• Custom theme creation');
+        }
+
+        function resetData() {
+            if (confirm('This will reset all your progress. Are you sure?')) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        // ==============================
+        // Quick Start
+        // ==============================
+        function quickStart() {
+            const settings = SettingsManager.getSettings();
+            const selectedThemes = SettingsManager.getSelectedThemes();
+
+            if (!selectedThemes.length) {
+                showError('Please select themes in Settings before using Quick Start!');
+                window.location.href = '/settings.html';
+                return;
+            }
+
+            SettingsManager.saveSettings(settings.timeLimit, settings.questionCount);
+            SettingsManager.saveThemes(selectedThemes);
+
+            window.location.href = '/quiz.html';
+        }
+
+        // ==============================
+        // Multiplayer Start
+        // ==============================
+        function startMultiplayer() {
+            // Show menu immediately to avoid modal delay
+            multiplayerManager.showMenu();
+            if (!multiplayerManager.isConnected) {
+                multiplayerManager.connect();
+            }
+        }
+
+        // ==============================
+        // Challenges placeholder
+        // ==============================
+        function viewChallenges() {
+            location.href = '/challenges.html';
+        }
+
+        // ==============================
+        // Page Init
+        // ==============================
+        window.addEventListener('DOMContentLoaded', () => {
+            createParticles();
+            updateLoginUI();
+
+            const playerName = localStorage.getItem('playerName');
+            if (!playerName) {
+                openLoginModal();
+            }
+
+            loadStats();
+            setInterval(loadStats, 30000);
+        });
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+# Backend binaries
+bible-quiz-pro
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+data/*.db
+data/*.db-journal
+
+# Backups
+*.backup
+*.save
+*.save.go
+backups/
+*.zip
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# Temporary
+tmp/
+temp/
+*.tmp
+
+# Build artifacts
+dist/
+build/
+
+# Dependencies
+vendor/
+node_modules/
+go.work

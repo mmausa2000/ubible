@@ -1,0 +1,2365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Settings - U Bible</title>
+    <script src="/js/bible-books.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 50%, #16213e 100%);
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(76, 175, 80, 0.6);
+            border-radius: 50%;
+            animation: float 15s infinite ease-in-out;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); opacity: 0; }
+            10% { opacity: 1; }
+            50% { transform: translate(50px, -100vh) scale(1.5); opacity: 0.8; }
+            90% { opacity: 1; }
+        }
+
+        .settings-container {
+            position: relative;
+            z-index: 1;
+            width: 95%;
+            max-width: 1500px;
+            height: 90vh;
+            max-height: 850px;
+            margin: 5vh auto 0;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: grid;
+            grid-template-rows: 80px 1fr 70px;
+            overflow: hidden;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .back-btn {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(-3px);
+        }
+
+        .page-info h1 {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .page-info p {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.85rem;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 15px;
+        }
+
+        .stat-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            border-radius: 20px;
+        }
+
+        .stat-badge .icon {
+            font-size: 1.2rem;
+        }
+
+        .stat-badge .value {
+            color: #4caf50;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .stat-badge .label {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.8rem;
+        }
+
+        /* Content Area */
+        .content {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            padding: 20px 40px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tab:hover {
+            color: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .tab.active {
+            color: #4caf50;
+            border-bottom-color: #4caf50;
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+            padding: 30px 40px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .tab-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .tab-content::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .tab-content::-webkit-scrollbar-thumb {
+            background: rgba(76, 175, 80, 0.5);
+            border-radius: 10px;
+        }
+
+        /* Game Settings Tab */
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+
+        .settings-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px solid transparent;
+            border-radius: 20px;
+            padding: 25px;
+            transition: all 0.3s;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            color: white;
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+
+        .slider-section {
+            margin-bottom: 20px;
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .slider-label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.95rem;
+        }
+
+        .slider-value {
+            color: #4caf50;
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4caf50, #66bb6a);
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(76, 175, 80, 0.4);
+            transition: all 0.3s;
+        }
+
+        .slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4caf50, #66bb6a);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 10px rgba(76, 175, 80, 0.4);
+        }
+
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .preset-btn {
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .preset-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(76, 175, 80, 0.3), transparent);
+            transition: left 0.6s;
+        }
+
+        .preset-btn:hover::before {
+            left: 100%;
+        }
+
+        .preset-btn:hover {
+            background: rgba(255, 255, 255, 0.06);
+            transform: translateY(-3px);
+            border-color: #4caf50;
+        }
+
+        .preset-btn.active {
+            background: rgba(76, 175, 80, 0.1);
+            border-color: #4caf50;
+        }
+
+        .preset-emoji {
+            font-size: 1.5rem;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .preset-name {
+            color: white;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        /* Themes Tab */
+        .themes-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .themes-title {
+            color: white;
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+
+        .theme-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .theme-control-btn {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .theme-control-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .theme-control-btn.select {
+            background: rgba(33, 150, 243, 0.1);
+            border-color: rgba(33, 150, 243, 0.3);
+            color: #42a5f5;
+        }
+
+        .theme-control-btn.select:hover {
+            background: rgba(33, 150, 243, 0.2);
+            border-color: #42a5f5;
+        }
+
+        .theme-control-btn.clear {
+            background: rgba(255, 152, 0, 0.1);
+            border-color: rgba(255, 152, 0, 0.3);
+            color: #ffa726;
+        }
+
+        .theme-control-btn.clear:hover {
+            background: rgba(255, 152, 0, 0.2);
+            border-color: #ffa726;
+        }
+
+        .theme-control-btn.refresh {
+            background: rgba(33, 150, 243, 0.1);
+            border-color: rgba(33, 150, 243, 0.3);
+            color: #42a5f5;
+        }
+
+        .theme-control-btn.refresh:hover {
+            background: rgba(33, 150, 243, 0.2);
+            border-color: #42a5f5;
+        }
+
+        .theme-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            padding-right: 10px;
+            padding-top: 10px;
+        }
+
+        .theme-grid::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .theme-grid::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        .theme-grid::-webkit-scrollbar-thumb {
+            background: rgba(76, 175, 80, 0.5);
+            border-radius: 10px;
+        }
+
+        .theme-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            padding: 18px 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .theme-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(76, 175, 80, 0.3), transparent);
+            transition: left 0.6s;
+        }
+
+        .theme-card:hover::before {
+            left: 100%;
+        }
+
+        .theme-card:hover {
+            background: rgba(255, 255, 255, 0.06);
+            transform: translateY(-3px) scale(1.02);
+            border-color: #4caf50;
+        }
+
+        .theme-card.active {
+            background: rgba(76, 175, 80, 0.1);
+            border-color: #4caf50;
+        }
+
+        .theme-card.disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .theme-card.disabled:hover {
+            transform: none;
+            border-color: transparent;
+        }
+
+        .theme-name {
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .theme-stats {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.8rem;
+        }
+
+        /* Create Theme Tab */
+        .create-theme-wrapper {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #f8f9fa;
+            border-radius: 20px;
+            padding: 24px 32px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-label-white {
+            display: block;
+            color: #333;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .form-input-dark {
+            width: 100%;
+            padding: 10px 14px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            color: #333;
+            font-size: 0.9rem;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .form-input-dark:focus {
+            background: white;
+            border-color: #4caf50;
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+
+        .form-input-dark::placeholder {
+            color: #999;
+        }
+
+        .tab-container-inner {
+            display: flex;
+            gap: 8px;
+            margin: 16px 0;
+            background: #e9ecef;
+            padding: 4px;
+            border-radius: 10px;
+        }
+
+        .tab-btn-inner {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .tab-btn-inner.active {
+            background: white;
+            color: #4caf50;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .tab-content-inner {
+            display: none;
+        }
+
+        .tab-content-inner.active {
+            display: block;
+        }
+
+        .progress-info-dark {
+            background: white;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 14px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .progress-info-dark span {
+            color: #666;
+            font-size: 0.85rem;
+        }
+
+        .progress-info-dark strong {
+            color: #4caf50;
+            font-size: 1rem;
+        }
+
+        .progress-bar-container {
+            background: #e0e0e0;
+            height: 6px;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #66bb6a);
+            transition: width 0.3s ease;
+        }
+
+        .verse-entries-dark {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 12px;
+            max-height: 280px;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+
+        .verse-entries-dark::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .verse-entries-dark::-webkit-scrollbar-track {
+            background: #e9ecef;
+            border-radius: 3px;
+        }
+
+        .verse-entries-dark::-webkit-scrollbar-thumb {
+            background: rgba(76, 175, 80, 0.5);
+            border-radius: 3px;
+        }
+
+        .verse-entry-dark {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 12px;
+            transition: all 0.3s;
+        }
+
+        .verse-entry-dark.valid {
+            border-color: #4caf50;
+            background: #f1f8e9;
+        }
+
+        .verse-entry-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .verse-number {
+            color: #666;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .remove-verse-dark {
+            background: #f44336;
+            color: white;
+            border: none;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .remove-verse-dark:hover {
+            background: #d32f2f;
+            transform: scale(1.1);
+        }
+
+        .verse-entry-fields {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .verse-entry-dark .form-input-dark {
+            padding: 8px 12px;
+            font-size: 0.85rem;
+        }
+
+        .verse-entry-dark .bulk-textarea-dark {
+            background: white;
+            border: 2px solid #e0e0e0;
+            color: #333;
+            font-family: inherit;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            min-height: 50px;
+        }
+
+        .verse-entry-dark .bulk-textarea-dark:focus {
+            background: white;
+            border-color: #4caf50;
+        }
+
+        .verse-entry-dark .bulk-textarea-dark::placeholder {
+            color: #999;
+        }
+
+        .add-verse-btn-dark {
+            width: 100%;
+            padding: 10px;
+            background: white;
+            border: 2px dashed #4caf50;
+            border-radius: 10px;
+            color: #4caf50;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .add-verse-btn-dark:hover {
+            background: #f1f8e9;
+            border-style: solid;
+        }
+
+        .bulk-textarea-dark {
+            width: 100%;
+            min-height: 180px;
+            padding: 12px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            color: #333;
+            resize: vertical;
+            line-height: 1.6;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .bulk-textarea-dark:focus {
+            background: white;
+            border-color: #4caf50;
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+
+        .bulk-textarea-dark::placeholder {
+            color: #999;
+        }
+
+        .strip-note-dark {
+            color: #666;
+            font-size: 0.8rem;
+            padding: 8px;
+            background: #fff3cd;
+            border-radius: 8px;
+            border: 1px solid #ffc107;
+            display: none;
+            margin-top: 10px;
+        }
+
+        .strip-note-dark.show {
+            display: block;
+        }
+
+        .file-upload-area-dark {
+            background: white;
+            border: 2px dashed #4caf50;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+            color: #666;
+            margin: 12px 0;
+            font-size: 0.9rem;
+        }
+
+        .file-upload-area-dark:hover {
+            background: #f1f8e9;
+            border-color: #2e7d32;
+        }
+
+        .file-upload-area-dark.dragover {
+            background: #e8f5e9;
+            border-color: #2e7d32;
+            transform: scale(1.02);
+        }
+
+        .parse-bulk-btn-dark {
+            padding: 10px 20px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .parse-bulk-btn-dark:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+        }
+
+        .form-actions-dark {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        /* Theme Modal */
+        .theme-modal { 
+            position: fixed; 
+            inset: 0; 
+            background: rgba(16, 18, 24, 0.45); 
+            backdrop-filter: blur(6px) saturate(120%); 
+            display: none; 
+            align-items: center; 
+            justify-content: center; 
+            z-index: 1000; 
+        }
+        
+        .theme-modal.show { display: flex; }
+        
+        .theme-modal-content { 
+            background: white; 
+            border-radius: 20px; 
+            max-width: 700px; 
+            width: 90%; 
+            max-height: 85vh; 
+            display: flex; 
+            flex-direction: column; 
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); 
+            overflow: hidden; 
+            position: relative; 
+            z-index: 1001; 
+        }
+        
+        .modal-header { 
+            background: linear-gradient(135deg, #4caf50, #66bb6a); 
+            color: white; 
+            padding: 25px 30px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+        
+        .modal-title { 
+            font-size: 1.8rem; 
+            color: white; 
+            font-weight: 700; 
+        }
+        
+        .close-btn { 
+            width: 40px; 
+            height: 40px; 
+            background: rgba(255, 255, 255, 0.2); 
+            border: none; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            cursor: pointer; 
+            transition: all 0.3s; 
+            color: white; 
+            font-size: 1.8rem; 
+            line-height: 1; 
+        }
+        
+        .close-btn:hover { 
+            background: rgba(255, 255, 255, 0.3); 
+            transform: rotate(90deg); 
+        }
+
+        .modal-body { 
+            padding: 30px; 
+            overflow-y: auto; 
+            flex: 1; 
+            background: #f8f9fa; 
+        }
+        
+        .modal-body::-webkit-scrollbar { width: 8px; }
+        .modal-body::-webkit-scrollbar-track { background: #e9ecef; }
+        .modal-body::-webkit-scrollbar-thumb { background: rgba(76, 175, 80, 0.5); border-radius: 10px; }
+
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; color: #333; font-size: 0.95rem; font-weight: 600; margin-bottom: 8px; }
+        .form-input { width: 100%; padding: 12px 15px; background: white; border: 2px solid #e0e0e0; border-radius: 10px; color: #333; font-size: 1rem; transition: all 0.3s; }
+        .form-input::placeholder { color: #999; }
+        .form-input:focus { outline: none; border-color: #4caf50; box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1); }
+
+        .tab-container-modal { display: flex; gap: 10px; margin-bottom: 25px; background: #e9ecef; padding: 5px; border-radius: 12px; }
+        .tab-btn-modal { flex: 1; padding: 12px; border: none; background: transparent; border-radius: 8px; cursor: pointer; font-weight: 600; color: #666; transition: all 0.3s; }
+        .tab-btn-modal.active { background: white; color: #4caf50; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
+        .tab-content-modal { display: none; }
+        .tab-content-modal.active { display: block; }
+
+        .progress-info { background: white; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 2px solid #e0e0e0; }
+        .progress-info span { color: #666; font-size: 0.95rem; }
+        .progress-info strong { color: #4caf50; font-size: 1.1rem; }
+
+        .verse-entries { display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; }
+        .verse-entry { background: white; border: 2px solid #e0e0e0; border-radius: 12px; padding: 15px; transition: all 0.3s; }
+        .verse-entry.valid { border-color: #4caf50; background: #f1f8e9; }
+        .verse-entry-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .verse-number { color: #666; font-weight: 600; font-size: 0.9rem; }
+        .remove-verse { background: #f44336; color: white; border: none; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-size: 18px; transition: all 0.3s; line-height: 1; }
+        .remove-verse:hover { background: #d32f2f; transform: scale(1.1); }
+        .verse-entry-fields { display: flex; flex-direction: column; gap: 10px; }
+        .verse-entry .form-input { min-height: 45px; }
+        .verse-entry textarea { min-height: 100px; resize: vertical; font-family: inherit; line-height: 1.6; }
+        .add-verse-btn { width: 100%; padding: 12px; background: white; border: 2px dashed #4caf50; border-radius: 10px; color: #4caf50; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .add-verse-btn:hover { background: #f1f8e9; border-style: solid; }
+
+        .bulk-import-section { display: flex; flex-direction: column; gap: 20px; }
+        .bulk-textarea { width: 100%; min-height: 250px; padding: 15px; background: white; border: 2px solid #e0e0e0; border-radius: 10px; font-family: 'Courier New', monospace; font-size: 0.95rem; color: #333; resize: vertical; line-height: 1.8; }
+        .bulk-textarea:focus { outline: none; border-color: #4caf50; box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1); }
+
+        .strip-note { color: #666; font-size: 0.85rem; padding: 10px; background: #fff3cd; border-radius: 8px; border: 1px solid #ffc107; display: none; }
+        .strip-note.show { display: block; }
+
+        .file-upload-area { background: white; border: 2px dashed #4caf50; border-radius: 12px; padding: 40px; text-align: center; transition: all 0.3s; cursor: pointer; color: #666; }
+        .file-upload-area:hover { background: #f1f8e9; border-color: #2e7d32; }
+        .file-upload-area.dragover { background: #e8f5e9; border-color: #2e7d32; transform: scale(1.02); }
+
+        .parse-bulk-btn { padding: 12px 24px; background: #4caf50; color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .parse-bulk-btn:hover { background: #45a049; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3); }
+
+        .modal-footer { padding: 20px 30px; background: #f8f9fa; border-top: 1px solid #e0e0e0; display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap; }
+        .btn-modal { padding: 12px 28px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; transition: all 0.3s; font-size: 1rem; }
+        .btn-modal-secondary { background: white; color: #666; border: 2px solid #e0e0e0; }
+        .btn-modal-secondary:hover { background: #f8f9fa; border-color: #ccc; }
+        .btn-modal-primary { background: linear-gradient(135deg, #4caf50, #66bb6a); color: white; }
+        .btn-modal-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4); }
+        .btn-modal-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        /* Account Tab */
+        .account-section {
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px solid transparent;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 600px;
+        }
+
+        .account-section h3 {
+            color: white;
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        .account-info {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .info-label {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+        }
+
+        .info-value {
+            color: white;
+            font-weight: 600;
+        }
+
+        /* Footer */
+        .footer {
+            background: rgba(255, 255, 255, 0.05);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .footer-info {
+            display: flex;
+            gap: 30px;
+        }
+
+        .info-stat {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+        }
+
+        .info-stat .icon {
+            color: #4caf50;
+        }
+
+        .info-stat .value {
+            color: white;
+            font-weight: 600;
+        }
+
+        .footer-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 12px 28px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .btn-primary {
+            background: rgba(76, 175, 80, 0.15);
+            border: 2px solid rgba(76, 175, 80, 0.4);
+            color: #4caf50;
+        }
+
+        .btn-primary:hover {
+            background: rgba(76, 175, 80, 0.25);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        @media (max-width: 1024px) {
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header {
+                flex-direction: column;
+                padding: 15px 30px;
+                gap: 12px;
+            }
+
+            .header-stats {
+                width: 100%;
+                justify-content: space-between;
+            }
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(76, 175, 80, 0.95);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .toast-icon {
+            font-size: 1.2rem;
+        }
+
+        /* Search Bar */
+        .theme-search {
+            margin-bottom: 20px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: white;
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .search-input:focus {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: #4caf50;
+        }
+
+        .search-input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 40px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state-title {
+            color: white;
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .empty-state-text {
+            font-size: 0.95rem;
+            margin-bottom: 20px;
+        }
+
+        .empty-state-action {
+            padding: 10px 24px;
+            background: rgba(76, 175, 80, 0.15);
+            border: 2px solid rgba(76, 175, 80, 0.4);
+            border-radius: 10px;
+            color: #4caf50;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-block;
+        }
+
+        .empty-state-action:hover {
+            background: rgba(76, 175, 80, 0.25);
+        }
+
+        /* Theme Tooltip */
+        .theme-card {
+            position: relative;
+        }
+
+        .theme-tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(-10px);
+            background: rgba(20, 20, 30, 0.98);
+            padding: 12px 16px;
+            border-radius: 8px;
+            white-space: nowrap;
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.9);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s;
+            z-index: 100;
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+
+        .theme-card:hover .theme-tooltip {
+            opacity: 1;
+            transform: translateX(-50%) translateY(-5px);
+        }
+
+        /* Loading Skeleton */
+        .skeleton-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            padding: 18px 15px;
+            height: 80px;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Quick Start Section */
+        .quick-start {
+            background: rgba(76, 175, 80, 0.08);
+            border: 2px solid rgba(76, 175, 80, 0.3);
+            border-radius: 16px;
+            padding: 20px 24px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .quick-start-info h3 {
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .quick-start-info p {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.85rem;
+        }
+
+        .quick-start-btn {
+            padding: 10px 20px;
+            background: rgba(76, 175, 80, 0.2);
+            border: 2px solid rgba(76, 175, 80, 0.5);
+            border-radius: 10px;
+            color: #4caf50;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+
+        .quick-start-btn:hover {
+            background: rgba(76, 175, 80, 0.3);
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .settings-container {
+                width: 98%;
+                height: 95vh;
+            }
+
+            .tabs, .tab-content, .footer {
+                padding-left: 20px;
+                padding-right: 20px;
+            }
+
+            .header {
+                padding: 12px 20px;
+                flex-wrap: wrap;
+            }
+
+            .page-info h1 {
+                font-size: 1.2rem;
+            }
+
+            .page-info p {
+                font-size: 0.75rem;
+            }
+
+            .header-stats {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .stat-badge {
+                padding: 6px 10px;
+            }
+
+            .stat-badge-value {
+                font-size: 0.9rem;
+            }
+
+            .themes-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .themes-title {
+                font-size: 1.1rem;
+                word-break: break-word;
+            }
+
+            .theme-controls {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            .theme-control-btn {
+                font-size: 0.85rem;
+                padding: 6px 12px;
+            }
+
+            .theme-grid {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            }
+
+            .footer {
+                flex-direction: column;
+                gap: 12px;
+                padding: 12px 20px;
+            }
+
+            .footer-info {
+                width: 100%;
+                justify-content: space-around;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            .info-stat {
+                font-size: 0.8rem;
+            }
+
+            .toast {
+                bottom: 20px;
+                right: 20px;
+                left: 20px;
+            }
+
+            .quick-start {
+                flex-direction: column;
+                gap: 12px;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="particles" id="particles"></div>
+    <div class="toast" id="toast">
+        <span class="toast-icon">✓</span>
+        <span id="toastMessage">Settings saved</span>
+    </div>
+
+    <div class="settings-container">
+        <div class="header">
+            <div class="header-left">
+                <button class="back-btn" onclick="window.location.href='/'">←</button>
+                <div class="page-info">
+                    <h1>Quiz Settings</h1>
+                    <p>Customize your experience</p>
+                </div>
+            </div>
+            <div class="header-stats">
+                <div class="stat-badge">
+                    <span class="icon">⏱️</span>
+                    <div>
+                        <div class="value" id="timeDisplay">20s</div>
+                        <div class="label">Time</div>
+                    </div>
+                </div>
+                <div class="stat-badge">
+                    <span class="icon">📝</span>
+                    <div>
+                        <div class="value" id="questionsDisplay">20</div>
+                        <div class="label">Questions</div>
+                    </div>
+                </div>
+                <div class="stat-badge">
+                    <span class="icon">📚</span>
+                    <div>
+                        <div class="value" id="themeCount">0</div>
+                        <div class="label">Themes</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('game')">
+                    <span>🎮</span>
+                    <span>Game Settings</span>
+                </button>
+                <button class="tab" onclick="switchTab('themes')">
+                    <span>📚</span>
+                    <span>Themes</span>
+                </button>
+                <button class="tab" onclick="switchTab('account')">
+                    <span>👤</span>
+                    <span>Account</span>
+                </button>
+            </div>
+
+            <!-- Game Settings Tab -->
+            <div class="tab-content active" id="game-tab">
+                <div class="settings-grid">
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <h2 class="card-title">⏱️ Time per Question</h2>
+                        </div>
+                        
+                        <div class="slider-section">
+                            <div class="slider-header">
+                                <span class="slider-label">Seconds</span>
+                                <span class="slider-value" id="timeValue">20s</span>
+                            </div>
+                            <div class="slider-container">
+                                <input type="range" min="0" max="2" value="2" step="1" class="slider" id="timeSlider" oninput="updateTimeFromSlider(this.value)">
+                            </div>
+                        </div>
+
+                        <div class="preset-grid">
+                            <button class="preset-btn" onclick="setTime(5)">
+                                <span class="preset-emoji">⚡</span>
+                                <span class="preset-name">Quick (5s)</span>
+                            </button>
+                            <button class="preset-btn" onclick="setTime(10)">
+                                <span class="preset-emoji">⏱️</span>
+                                <span class="preset-name">Medium (10s)</span>
+                            </button>
+                            <button class="preset-btn active" onclick="setTime(20)">
+                                <span class="preset-emoji">🧘</span>
+                                <span class="preset-name">Standard (20s)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <h2 class="card-title">📝 Number of Questions</h2>
+                        </div>
+                        
+                        <div class="slider-section">
+                            <div class="slider-header">
+                                <span class="slider-label">Questions</span>
+                                <span class="slider-value" id="questionValue">20</span>
+                            </div>
+                            <div class="slider-container">
+                                <input type="range" min="0" max="2" value="1" step="1" class="slider" id="questionSlider" oninput="updateQuestionFromSlider(this.value)">
+                            </div>
+                        </div>
+
+                        <div class="preset-grid">
+                            <button class="preset-btn" onclick="setQuestions(10)">
+                                <span class="preset-emoji">🎯</span>
+                                <span class="preset-name">Quick (10)</span>
+                            </button>
+                            <button class="preset-btn active" onclick="setQuestions(20)">
+                                <span class="preset-emoji">📚</span>
+                                <span class="preset-name">Standard (20)</span>
+                            </button>
+                            <button class="preset-btn" onclick="setQuestions(30)">
+                                <span class="preset-emoji">🏆</span>
+                                <span class="preset-name">Challenge (30)</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-card" style="margin-top: 20px;">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2 class="card-title">📚 Selected Themes</h2>
+                        <button class="theme-control-btn select" onclick="switchTab('themes')" style="background: rgba(33,150,243,0.1); border-color: rgba(33,150,243,0.3); color: #42a5f5; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; border: 2px solid; transition: all 0.3s;">Browse Themes ←’</button>
+                    </div>
+                    <div id="selectedThemesPreview" style="margin-top: 15px;">
+                        <div style="color: rgba(255,255,255,0.6); text-align: center; padding: 30px;">
+                            No themes selected. Click "Browse Themes" to select themes.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Themes Tab -->
+            <div class="tab-content" id="themes-tab">
+                <div id="quickStartSection"></div>
+
+                <div class="themes-header">
+                    <h2 class="themes-title">📚 Choose Themes <span style="color: rgba(255,255,255,0.5); font-size: 0.9rem; font-weight: 400;" id="themeLimitText">(0/5 selected)</span></h2>
+                    <div class="theme-controls">
+                        <button class="theme-control-btn refresh" onclick="openThemeCreator()" style="background: rgba(76,175,80,0.15); border-color: rgba(76,175,80,0.4); color: #4caf50;">⚙ Create Theme</button>
+                        <button class="theme-control-btn select" onclick="selectAllThemes()">✓ Select All</button>
+                        <button class="theme-control-btn clear" onclick="clearAllThemes()">✗ Clear All</button>
+                        <button class="theme-control-btn refresh" onclick="refreshThemes()">🔄 Refresh</button>
+                    </div>
+                </div>
+
+                <div class="theme-search">
+                    <input type="text" class="search-input" id="themeSearch" placeholder="🔍 Search themes..." oninput="filterThemes(this.value)">
+                </div>
+
+                <div class="theme-grid" id="themeGrid">
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
+                    <div class="skeleton-card"></div>
+                </div>
+            </div>
+
+            <!-- Account Tab -->
+            <div class="tab-content" id="account-tab">
+                <div class="account-section">
+                    <h3>Account Information</h3>
+                    <div class="account-info">
+                        <div class="info-row">
+                            <span class="info-label">Username</span>
+                            <span class="info-value">Player123</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Email</span>
+                            <span class="info-value">user@example.com</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Account Type</span>
+                            <span class="info-value">Member</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Joined</span>
+                            <span class="info-value">January 2025</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="footer-info">
+                <div class="info-stat">
+                    <span class="icon">🌍</span>
+                    <span>Players online: <span class="value" id="playersOnline">--</span></span>
+                </div>
+                <div class="info-stat">
+                    <span class="icon">📊</span>
+                    <span>Version: <span class="value">2.0</span></span>
+                </div>
+                <div class="info-stat">
+                    <span class="icon">🕐</span>
+                    <span>Last played: <span class="value" id="lastPlayed">Today</span></span>
+                </div>
+            </div>
+            <button class="btn btn-primary" id="startBtn" onclick="startQuiz()">
+                <span>🚀 Start Quiz</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Create Theme Modal -->
+    <div class="theme-modal" id="themeModal">
+        <div class="theme-modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">📚 Create Custom Theme</h2>
+                <button class="close-btn" onclick="closeThemeCreator()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">Theme Name</label>
+                    <input type="text" class="form-input" id="themeName" placeholder="e.g., God's Love, Faith & Trust" required>
+                </div>
+                <div class="tab-container-modal">
+                    <button class="tab-btn-modal active" onclick="switchModalTab('manual')">Manual Entry</button>
+                    <button class="tab-btn-modal" onclick="switchModalTab('bulk')">Bulk Import</button>
+                </div>
+                <div class="tab-content-modal active" id="manualTab">
+                    <div class="progress-info">
+                        <span>Verses: <strong id="verseCount">0</strong>/5 minimum</span>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill" id="progressBar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="verse-entries" id="verseEntries"></div>
+                    <button class="add-verse-btn" onclick="addVerseEntry()">+ Add Verse</button>
+                </div>
+                <div class="tab-content-modal" id="bulkTab">
+                    <div class="bulk-import-section">
+                        <div class="form-group">
+                            <label class="form-label">Paste verses (one per line)</label>
+                            <textarea id="bulkInput" class="bulk-textarea" placeholder="Format: Number. Reference — Verse text
+
+Examples:
+1. John 3:16 — For God so loved the world that he gave his one and only Son
+2. Romans 8:28 — And we know that in all things God works for the good
+3. 1 Corinthians 13:4 — Love is patient, love is kind"></textarea>
+                        </div>
+                        
+                        <div style="background: rgba(33,150,243,0.1); border: 2px solid rgba(33,150,243,0.3); border-radius: 10px; padding: 15px; margin-bottom: 15px;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                                <span style="font-size: 1.2rem;">🔄</span>
+                                <strong style="color: #333;">Auto-Convert Formats</strong>
+                                <span style="margin-left: auto; color: #666; font-size: 0.8rem;" id="bookCountBadge"></span>
+                            </div>
+                            <div style="color: #666; font-size: 0.85rem; line-height: 1.5;">
+                                Recognizes book names in <strong id="languageList">multiple languages</strong>. Paste any format and click "Parse Verses":
+                                <ul style="margin: 8px 0 0 20px;">
+                                    <li><code>Reference: Text</code> ←’ <code>Reference "” Text</code></li>
+                                    <li><code>Text (Reference)</code> ←’ <code>Reference "” Text</code></li>
+                                    <li>Handles verse ranges: <code>18:10-12</code></li>
+                                    <li>Removes numbered prefixes</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="strip-note" id="bulkStripNote"></div>
+                        <div class="file-upload-area" id="fileDropZone">
+                            <div>📁 Drop a .txt file here or click to browse</div>
+                            <input type="file" id="fileInput" accept=".txt" style="display: none" />
+                        </div>
+                        <button class="parse-bulk-btn" onclick="parseBulkText()">Parse & Convert Verses</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal btn-modal-secondary" id="exportTxtBtn" onclick="exportVersesTxt()" disabled>💾 Save as .txt</button>
+                <button class="btn-modal btn-modal-secondary" onclick="closeThemeCreator()">Cancel</button>
+                <button class="btn-modal btn-modal-primary" id="saveThemeBtn" onclick="saveTheme()" disabled>Create Theme</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const timeValues = [5, 10, 20];
+        const questionValues = [10, 20, 30];
+        let availableThemes = [];
+        let currentTime = 20;
+        let currentQuestions = 20;
+
+        function createParticles() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 20; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 15 + 's';
+                particle.style.animationDuration = (15 + Math.random() * 10) + 's';
+                container.appendChild(particle);
+            }
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            const targetTab = document.querySelector(`.tab[onclick*="${tabName}"]`);
+            if (targetTab) targetTab.classList.add('active');
+            
+            const targetContent = document.getElementById(tabName + '-tab');
+            if (targetContent) targetContent.classList.add('active');
+        }
+
+        function updateTimeFromSlider(index) {
+            const value = timeValues[index];
+            currentTime = value;
+            document.getElementById('timeValue').textContent = value + 's';
+            document.getElementById('timeDisplay').textContent = value + 's';
+            updateActivePreset('time', value);
+            saveQuizSettings();
+        }
+
+        function updateQuestionFromSlider(index) {
+            const value = questionValues[index];
+            currentQuestions = value;
+            document.getElementById('questionValue').textContent = value;
+            document.getElementById('questionsDisplay').textContent = value;
+            updateActivePreset('question', value);
+            saveQuizSettings();
+        }
+
+        function setTime(value) {
+            const index = timeValues.indexOf(value);
+            currentTime = value;
+            document.getElementById('timeSlider').value = index;
+            updateTimeFromSlider(index);
+        }
+
+        function setQuestions(value) {
+            const index = questionValues.indexOf(value);
+            currentQuestions = value;
+            document.getElementById('questionSlider').value = index;
+            updateQuestionFromSlider(index);
+        }
+
+        function saveQuizSettings() {
+            localStorage.setItem('quizSettings', JSON.stringify({
+                timeLimit: currentTime,
+                questionCount: currentQuestions
+            }));
+        }
+
+        function updateActivePreset(type, value) {
+            const cards = document.querySelectorAll('.settings-card');
+            cards.forEach(card => {
+                const presets = card.querySelectorAll('.preset-btn');
+                presets.forEach(btn => {
+                    const btnValue = parseInt(btn.getAttribute('onclick').match(/\d+/)[0]);
+                    if (type === 'time' && btn.getAttribute('onclick').includes('setTime')) {
+                        btn.classList.toggle('active', btnValue === parseInt(value));
+                    } else if (type === 'question' && btn.getAttribute('onclick').includes('setQuestions')) {
+                        btn.classList.toggle('active', btnValue === parseInt(value));
+                    }
+                });
+            });
+        }
+
+        async function loadThemes() {
+            try {
+                const response = await fetch('/api/themes');
+                const data = await response.json();
+                if (!data.success || !data.themes) throw new Error('Failed to load themes');
+                availableThemes = data.themes;
+                renderThemes();
+            } catch (error) {
+                console.error('Error loading themes:', error);
+                document.getElementById('themeGrid').innerHTML = '<div style="color: #ff5252; padding: 40px;">Failed to load themes. Please refresh the page.</div>';
+            }
+        }
+
+        async function loadThemesNoCache() {
+            try {
+                const response = await fetch('/api/themes?ts=' + Date.now(), {
+                    headers: { 'Cache-Control': 'no-store' }
+                });
+                const data = await response.json();
+                if (!data.success || !data.themes) throw new Error('Failed to load themes');
+                availableThemes = data.themes;
+                renderThemes();
+            } catch (error) {
+                console.error('Error loading themes:', error);
+                document.getElementById('themeGrid').innerHTML = '<div style="color: #ff5252; padding: 40px;">Failed to load themes. Please refresh the page.</div>';
+            }
+        }
+
+        function renderThemes() {
+            const grid = document.getElementById('themeGrid');
+            const savedThemes = JSON.parse(localStorage.getItem('selectedThemes') || '[]');
+
+            if (!Array.isArray(availableThemes) || availableThemes.length === 0) {
+                grid.innerHTML = '<div style="color: rgba(255,255,255,0.7); padding: 40px;">No themes available</div>';
+                return;
+            }
+
+            const validThemes = availableThemes.map(theme => ({
+                ...theme,
+                disabled: Number(theme.question_count) < 5
+            }));
+
+            grid.innerHTML = validThemes.map(theme => {
+                const isActiveChip = savedThemes.includes(theme.name);
+                const versesLabel = `${theme.question_count} verse${theme.question_count === 1 ? '' : 's'}`;
+                const safeName = String(theme.name).replace(/"/g, '&quot;');
+
+                return `
+                    <div class="theme-card ${isActiveChip ? 'active' : ''} ${theme.disabled ? 'disabled' : ''}"
+                         data-theme-name="${safeName}">
+                        <div class="theme-name">${theme.name}</div>
+                        <div class="theme-stats">${versesLabel}</div>
+                    </div>
+                `;
+            }).join('');
+
+            updateThemeCount();
+        }
+
+        function toggleTheme(themeName) {
+            const chip = document.querySelector(`[data-theme-name="${CSS.escape(themeName)}"]`);
+            if (!chip || chip.classList.contains('disabled')) return;
+            
+            const wasActive = chip.classList.contains('active');
+            const activeCount = document.querySelectorAll('.theme-card.active').length;
+            
+            // Check 5 theme limit when adding
+            if (!wasActive && activeCount >= 5) {
+                showToast('Maximum 5 themes allowed', '⚙ ');
+                return;
+            }
+            
+            chip.classList.toggle('active');
+            updateThemeCount();
+            saveSelectedThemes();
+        }
+
+        function selectAllThemes() {
+            const inactiveThemes = Array.from(document.querySelectorAll('.theme-card:not(.active):not(.disabled)'));
+            const currentActive = document.querySelectorAll('.theme-card.active').length;
+            const maxToAdd = 5 - currentActive;
+            
+            if (maxToAdd <= 0) {
+                showToast('Maximum 5 themes already selected', '⚙ ');
+                return;
+            }
+            
+            let added = 0;
+            for (const chip of inactiveThemes) {
+                if (added >= maxToAdd) break;
+                chip.classList.add('active');
+                added++;
+            }
+            
+            updateThemeCount();
+            saveSelectedThemes();
+            showToast(`${added} theme${added > 1 ? 's' : ''} added (5 max)`, '✓');
+        }
+
+        function clearAllThemes() {
+            document.querySelectorAll('.theme-card').forEach(chip => chip.classList.remove('active'));
+            updateThemeCount();
+            saveSelectedThemes();
+        }
+
+        function saveSelectedThemes() {
+            const selectedThemes = [];
+            document.querySelectorAll('.theme-card.active').forEach(chip => {
+                selectedThemes.push(chip.dataset.themeName);
+            });
+            localStorage.setItem('selectedThemes', JSON.stringify(selectedThemes));
+            
+            // Also save current quiz settings
+            localStorage.setItem('quizSettings', JSON.stringify({
+                timeLimit: currentTime,
+                questionCount: currentQuestions
+            }));
+        }
+
+        function updateThemeCount() {
+            const count = document.querySelectorAll('.theme-card.active').length;
+            document.getElementById('themeCount').textContent = count;
+            
+            // Update limit text
+            const limitText = document.getElementById('themeLimitText');
+            if (limitText) {
+                limitText.textContent = `(${count}/5 selected)`;
+                limitText.style.color = count >= 5 ? '#4caf50' : 'rgba(255,255,255,0.5)';
+            }
+            
+            const startBtn = document.getElementById('startBtn');
+            if (startBtn) startBtn.disabled = count === 0;
+            
+            // Update selected themes preview
+            updateSelectedThemesPreview();
+        }
+
+        function updateSelectedThemesPreview() {
+            const preview = document.getElementById('selectedThemesPreview');
+            if (!preview) return;
+
+            const selectedCards = Array.from(document.querySelectorAll('.theme-card.active'));
+            
+            if (selectedCards.length === 0) {
+                preview.innerHTML = `
+                    <div style="color: rgba(255,255,255,0.6); text-align: center; padding: 30px;">
+                        No themes selected. Click "Browse Themes" to select themes.
+                    </div>
+                `;
+                return;
+            }
+
+            preview.innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px;">
+                    ${selectedCards.map(card => {
+                        const name = card.querySelector('.theme-name')?.textContent || '';
+                        const stats = card.querySelector('.theme-stats')?.textContent || '';
+                        return `
+                            <div style="background: rgba(76,175,80,0.1); border: 2px solid rgba(76,175,80,0.3); border-radius: 12px; padding: 15px; text-align: center;">
+                                <div style="color: white; font-weight: 600; margin-bottom: 5px;">${name}</div>
+                                <div style="color: rgba(255,255,255,0.6); font-size: 0.85rem;">${stats}</div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function filterThemes(searchTerm) {
+            const term = searchTerm.toLowerCase().trim();
+            const cards = document.querySelectorAll('.theme-card');
+            
+            let visibleCount = 0;
+            cards.forEach(card => {
+                const themeName = card.querySelector('.theme-name')?.textContent.toLowerCase() || '';
+                if (themeName.includes(term)) {
+                    card.style.display = '';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            // Show empty state if no results
+            const grid = document.getElementById('themeGrid');
+            const existingEmpty = grid.querySelector('.search-empty');
+            
+            if (visibleCount === 0 && term !== '') {
+                if (!existingEmpty) {
+                    const emptyDiv = document.createElement('div');
+                    emptyDiv.className = 'search-empty';
+                    emptyDiv.style.gridColumn = '1 / -1';
+                    emptyDiv.style.textAlign = 'center';
+                    emptyDiv.style.padding = '40px';
+                    emptyDiv.style.color = 'rgba(255,255,255,0.6)';
+                    emptyDiv.innerHTML = `
+                        <div style="font-size: 3rem; margin-bottom: 10px;">🔍</div>
+                        <div style="font-size: 1.1rem; color: white; margin-bottom: 5px;">No themes found</div>
+                        <div>Try a different search term</div>
+                    `;
+                    grid.appendChild(emptyDiv);
+                }
+            } else if (existingEmpty) {
+                existingEmpty.remove();
+            }
+        }
+
+        function refreshThemes() {
+            loadThemesNoCache();
+        }
+
+        function startQuiz() {
+            const selectedThemes = [];
+            document.querySelectorAll('.theme-card.active').forEach(chip => selectedThemes.push(chip.dataset.themeName));
+            if (selectedThemes.length === 0) { 
+                alert('⚙  Please select at least one theme!'); 
+                return; 
+            }
+            localStorage.setItem('quizSettings', JSON.stringify({ 
+                timeLimit: currentTime, 
+                questionCount: currentQuestions 
+            }));
+            localStorage.setItem('selectedThemes', JSON.stringify(selectedThemes));
+            window.location.href = '/quiz.html';
+        }
+
+        function openThemeCreator() {
+            const modal = document.getElementById('themeModal');
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+
+            document.getElementById('themeName').value = '';
+            document.getElementById('bulkInput').value = '';
+            document.getElementById('verseEntries').innerHTML = '';
+            document.getElementById('saveThemeBtn').disabled = true;
+            document.getElementById('exportTxtBtn').disabled = true;
+            document.getElementById('verseCount').textContent = '0';
+            document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('bulkStripNote').textContent = '';
+            document.getElementById('bulkStripNote').classList.remove('show');
+
+            document.querySelectorAll('.tab-btn-modal').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content-modal').forEach(c => c.classList.remove('active'));
+            document.querySelector('.tab-btn-modal').classList.add('active');
+            document.getElementById('manualTab').classList.add('active');
+
+            addVerseEntry();
+        }
+
+        function closeThemeCreator() {
+            const modal = document.getElementById('themeModal');
+            modal.classList.remove('show');
+            document.body.style.overflow = '';
+        }
+
+        function switchModalTab(tabName) {
+            document.querySelectorAll('.tab-btn-modal').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content-modal').forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName + 'Tab').classList.add('active');
+        }
+
+        function addVerseEntry(data = {}) {
+            const container = document.getElementById('verseEntries');
+            const count = container.children.length + 1;
+            const entry = document.createElement('div');
+            entry.className = 'verse-entry';
+            entry.innerHTML = `
+                <div class="verse-entry-header">
+                    <span class="verse-number">Verse ${count}</span>
+                    <button class="remove-verse" onclick="removeVerseEntry(this)">×</button>
+                </div>
+                <div class="verse-entry-fields">
+                    <input type="text" class="form-input" placeholder="Reference (e.g., John 3:16)" value="${data.ref || ''}" oninput="updateProgressAndSaveState()">
+                    <textarea class="form-input" placeholder="Verse text..." rows="4" style="min-height: 100px; resize: vertical; font-family: inherit; line-height: 1.6;" oninput="updateProgressAndSaveState()">${data.text || ''}</textarea>
+                </div>
+            `;
+            container.appendChild(entry);
+            updateProgressAndSaveState();
+        }
+
+        function removeVerseEntry(btn) {
+            btn.closest('.verse-entry-dark').remove();
+            document.querySelectorAll('.verse-entry-dark').forEach((entry, index) => {
+                entry.querySelector('.verse-number').textContent = `Verse ${index + 1}`;
+            });
+            updateProgressAndSaveState();
+        }
+
+        function updateProgressAndSaveState() {
+            const entries = Array.from(document.querySelectorAll('.verse-entry'));
+            let validCount = 0;
+            
+            entries.forEach(entry => {
+                const inputs = entry.querySelectorAll('.form-input');
+                const ref = inputs[0]?.value.trim() || '';
+                const text = inputs[1]?.value.trim() || '';
+                
+                if (ref.length >= 3 && text.length >= 5) {
+                    entry.classList.add('valid');
+                    validCount++;
+                } else {
+                    entry.classList.remove('valid');
+                }
+            });
+
+            document.getElementById('verseCount').textContent = validCount;
+            const progress = Math.min((validCount / 5) * 100, 100);
+            document.getElementById('progressBar').style.width = progress + '%';
+
+            const saveBtn = document.getElementById('saveThemeBtn');
+            const exportBtn = document.getElementById('exportTxtBtn');
+            if (validCount >= 5) {
+                saveBtn.disabled = false;
+                exportBtn.disabled = false;
+            } else {
+                saveBtn.disabled = true;
+                exportBtn.disabled = true;
+            }
+        }
+
+        function stripListPrefix(line) {
+            const match = line.match(/^\d+\.\s*/);
+            if (match) return { line: line.slice(match[0].length), changed: true };
+            return { line, changed: false };
+        }
+
+        function normalizeRefSeparator(line) {
+            const hasDash = line.includes(' - ') || line.includes(' "“ ') || line.includes(' "” ');
+            if (!hasDash) return { line, changed: false };
+            return { line: line.replace(/\s+[-"“"”]\s+/, ' "” '), changed: true };
+        }
+
+        function convertVerseFormat(line) {
+            // Fix corrupted UTF-8 encoding (– ←’ "”)
+            line = line.replace(/–/g, '"”');
+            line = line.replace(/–/g, '"“');
+            line = line.replace(/'/g, "'"); // left single quote
+            line = line.replace(/'/g, "'"); // right single quote
+            
+            // Format 1: "Book Chapter:Verse: Text" ←’ "Book Chapter:Verse "” Text"
+            // Only convert colon that comes AFTER chapter:verse
+            line = line.replace(/^(.+?\d+:\d+(?:-\d+)?):\s+(.+)$/, '$1 "” $2');
+            
+            // Format 2: "Verse text (Reference)" ←’ "Reference "” Verse text"
+            const endRefMatch = line.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+            if (endRefMatch) {
+                const [, text, ref] = endRefMatch;
+                line = `${ref.trim()} — ${text.trim()}`;
+            }
+            
+            // Format 3: "Reference - Verse" (but NOT verse ranges like 18:10-12)
+            line = line.replace(/^([^\d"”]+\d+:\d+(?:-\d+)?)\s*[-"“]\s+(.+)$/, '$1 "” $2');
+            
+            return line;
+        }
+
+        function cleanBulkText(raw) {
+            const lines = raw.split(/\r?\n/);
+            let removedCount = 0, normalizedCount = 0, convertedCount = 0;
+            
+            const cleaned = lines.map(l => {
+                let line = l.trim();
+                
+                // Remove numbered prefix
+                const r1 = stripListPrefix(line);
+                if (r1.changed) removedCount++;
+                line = r1.line;
+                
+                // Convert formats
+                const originalLine = line;
+                line = convertVerseFormat(line);
+                if (line !== originalLine) convertedCount++;
+                
+                // Normalize separator
+                const r2 = normalizeRefSeparator(line);
+                if (r2.changed) normalizedCount++;
+                line = r2.line;
+                
+                return line;
+            });
+            
+            return { cleanedText: cleaned.join('\n'), removedCount, normalizedCount, convertedCount };
+        }
+
+        function setStripNote(removedCount, normalizedCount, convertedCount) {
+            const note = document.getElementById('bulkStripNote');
+            const parts = [];
+            if (convertedCount > 0) parts.push(`converted ${convertedCount} format${convertedCount === 1 ? '' : 's'}`);
+            if (removedCount > 0) parts.push(`removed ${removedCount} prefix${removedCount === 1 ? '' : 'es'}`);
+            if (normalizedCount > 0) parts.push(`normalized ${normalizedCount} separator${normalizedCount === 1 ? '' : 's'}`);
+            
+            if (parts.length > 0) {
+                note.textContent = `✓ Auto-converted: ${parts.join(', ')}`;
+                note.style.background = '#e8f5e9';
+                note.style.borderColor = '#4caf50';
+                note.style.color = '#2e7d32';
+                note.classList.add('show');
+            } else {
+                note.textContent = '';
+                note.classList.remove('show');
+            }
+        }
+
+        function isRefLine(line) {
+            const book = findBookInTextSmart(line);
+            if (!book) return false;
+            const escaped = book.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            return new RegExp(`^${escaped}\\s+\\d+:\\d+`).test(line);
+        }
+
+        function parseBulkText() {
+            const bulk = document.getElementById('bulkInput');
+            const raw = bulk.value || '';
+            
+            // Only normalize separators and convert formats, don't strip numbers yet
+            const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+            if (lines.length === 0) {
+                alert('Please paste at least one verse.');
+                return;
+            }
+
+            document.getElementById('verseEntries').innerHTML = '';
+
+            const entries = [];
+            let currentRef = null;
+            let currentText = [];
+            let convertedCount = 0;
+
+            for (let line of lines) {
+                // Strip number prefix from this line only
+                const originalLine = line;
+                line = line.replace(/^\d+\.\s*/, '');
+                if (line !== originalLine) convertedCount++;
+                
+                // Normalize and convert format
+                line = convertVerseFormat(line);
+                line = line.replace(/\s+[-"“]\s+/, ' "” ');
+                
+                if (isRefLine(line)) {
+                    // Save previous verse if exists
+                    if (currentRef) {
+                        entries.push({ 
+                            ref: currentRef, 
+                            text: currentText.join(' ').trim() 
+                        });
+                    }
+                    
+                    // Start new verse - only parse if inline separator exists
+                    if (/["”"“\-:]\s+/.test(line)) {
+                        const parsed = smartParse(line);
+                        if (parsed && parsed.ref) {
+                            currentRef = parsed.ref;
+                            currentText = parsed.text ? [parsed.text] : [];
+                        } else {
+                            currentRef = line;
+                            currentText = [];
+                        }
+                    } else {
+                        // Pure reference line, no split needed
+                        currentRef = line;
+                        currentText = [];
+                    }
+                } else {
+                    // Accumulate text for current verse
+                    if (currentRef) {
+                        currentText.push(line);
+                    }
+                }
+            }
+
+            // Add final verse
+            if (currentRef) {
+                entries.push({ 
+                    ref: currentRef, 
+                    text: currentText.join(' ').trim() 
+                });
+            }
+
+            // Show conversion note
+            if (convertedCount > 0) {
+                const note = document.getElementById('bulkStripNote');
+                note.textContent = `✓ Auto-converted: removed ${convertedCount} numbered prefix${convertedCount === 1 ? '' : 'es'}`;
+                note.style.background = '#e8f5e9';
+                note.style.borderColor = '#4caf50';
+                note.style.color = '#2e7d32';
+                note.classList.add('show');
+            }
+
+            // Render entries
+            entries.forEach(entry => addVerseEntry(entry));
+
+            switchModalTab('manual');
+            updateProgressAndSaveState();
+        }
+
+        function exportVersesTxt() {
+            const entries = Array.from(document.querySelectorAll('.verse-entry'))
+                .map(e => {
+                    const inputs = e.querySelectorAll('.form-input');
+                    return { ref: inputs[0]?.value.trim() || '', text: inputs[1]?.value.trim() || '' };
+                })
+                .filter(v => v.ref.length >= 3 && v.text.length >= 5);
+
+            if (entries.length === 0) {
+                alert('No valid verses to export.');
+                return;
+            }
+
+            const themeName = document.getElementById('themeName').value.trim() || 'custom-theme';
+            const lines = entries.map((v, i) => `${i + 1}. ${v.ref} — ${v.text}`);
+            const content = lines.join('\n');
+
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const safeName = themeName.replace(/[/\\?%*:|"<>]/g, '').replace(/\s+/g, ' ').trim();
+            a.href = url;
+            a.download = `${safeName || 'custom-theme'}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 0);
+        }
+
+        async function saveTheme() {
+            const themeName = document.getElementById('themeName').value.trim();
+            const entries = Array.from(document.querySelectorAll('.verse-entry'))
+                .map(e => {
+                    const inputs = e.querySelectorAll('.form-input');
+                    return { 
+                        reference: inputs[0]?.value.trim() || '', 
+                        text: inputs[1]?.value.trim() || '' 
+                    };
+                })
+                .filter(v => v.reference.length >= 3 && v.text.length >= 5);
+
+            if (!themeName || themeName.length < 3) {
+                alert('Please provide a theme name (at least 3 characters).');
+                return;
+            }
+
+            if (entries.length < 5) {
+                alert('Please add at least 5 valid verses.');
+                return;
+            }
+
+            const saveBtn = document.getElementById('saveThemeBtn');
+            const originalText = saveBtn.textContent;
+            saveBtn.disabled = true;
+            saveBtn.textContent = '⏳ Saving...';
+
+            try {
+                const token = localStorage.getItem('token') || localStorage.getItem('guestToken');
+                const headers = { 'Content-Type': 'application/json' };
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+
+                const response = await fetch('/api/themes', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({
+                        name: themeName,
+                        verses: entries
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to save: ${response.statusText}`);
+                }
+
+                showToast(`Theme "${themeName}" created!`, '✨');
+                closeThemeCreator();
+                setTimeout(() => refreshThemes(), 500);
+            } catch (error) {
+                console.error('Error saving theme:', error);
+                alert(`Failed to save theme: ${error.message}`);
+                saveBtn.disabled = false;
+                saveBtn.textContent = originalText;
+            }
+        }
+
+        function setupFileDrop() {
+            const zone = document.getElementById('fileDropZone');
+            const input = document.getElementById('fileInput');
+            const bulk = document.getElementById('bulkInput');
+            if (!zone || !input || !bulk) return;
+
+            zone.addEventListener('click', () => input.click());
+            zone.addEventListener('dragover', e => { 
+                e.preventDefault(); 
+                zone.classList.add('dragover'); 
+            });
+            zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+            zone.addEventListener('drop', e => {
+                e.preventDefault(); 
+                zone.classList.remove('dragover');
+                const file = e.dataTransfer.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const raw = reader.result || '';
+                    const { cleanedText, removedCount, normalizedCount } = cleanBulkText(String(raw));
+                    bulk.value = cleanedText;
+                    setStripNote(removedCount, normalizedCount);
+                };
+                reader.readAsText(file);
+            });
+
+            input.addEventListener('change', () => {
+                const file = input.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const raw = reader.result || '';
+                    const { cleanedText, removedCount, normalizedCount } = cleanBulkText(String(raw));
+                    bulk.value = cleanedText;
+                    setStripNote(removedCount, normalizedCount);
+                };
+                reader.readAsText(file);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            createParticles();
+            loadThemes();
+            addVerseEntry();
+            setupFileDrop();
+            
+            // Event delegation for theme cards
+            document.getElementById('themeGrid').addEventListener('click', (e) => {
+                const card = e.target.closest('.theme-card');
+                if (card && !card.classList.contains('disabled')) {
+                    toggleTheme(card.dataset.themeName);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

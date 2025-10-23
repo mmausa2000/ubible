@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Challenges - U Bible</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 50%, #16213e 100%);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(76, 175, 80, 0.6);
+            border-radius: 50%;
+            animation: particleFloat 15s infinite linear;
+        }
+
+        @keyframes particleFloat {
+            0% { transform: translateY(100vh) translateX(0); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100vh) translateX(100px); opacity: 0; }
+        }
+
+        .app-container {
+            width: 95%;
+            max-width: 1500px;
+            height: 90vh;
+            max-height: 850px;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: grid;
+            grid-template-rows: 80px 1fr 80px;
+            overflow: hidden;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
+            position: relative;
+            z-index: 10;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .back-btn {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: white;
+            text-decoration: none;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(-3px);
+        }
+
+        .page-title h1 {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .page-title p {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.85rem;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 20px;
+        }
+
+        .stat-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            border-radius: 20px;
+        }
+
+        .stat-badge-icon {
+            font-size: 1.2rem;
+        }
+
+        .stat-badge-value {
+            color: #4caf50;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .stat-badge-label {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.8rem;
+        }
+
+        .content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px 40px;
+            overflow: hidden;
+        }
+
+        .challenges-panel {
+            width: 100%;
+            max-width: 1100px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            height: 100%;
+        }
+
+        .daily-challenge-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px solid rgba(255, 193, 7, 0.3);
+            border-radius: 20px;
+            padding: 20px 25px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .daily-challenge-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 193, 7, 0.2), transparent);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0%, 100% { left: -100%; }
+            50% { left: 100%; }
+        }
+
+        .daily-challenge-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            position: relative;
+        }
+
+        .daily-icon {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 193, 7, 0.2);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+
+        .daily-text h3 {
+            color: white;
+            font-size: 1.2rem;
+            margin-bottom: 5px;
+        }
+
+        .daily-text p {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+        }
+
+        .daily-badge {
+            background: rgba(255, 193, 7, 0.3);
+            color: #ffc107;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .challenge-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            flex: 1;
+        }
+
+        .challenge-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px solid transparent;
+            border-radius: 20px;
+            padding: 20px;
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .challenge-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(76, 175, 80, 0.3), transparent);
+            transition: left 0.6s;
+        }
+
+        .challenge-card:hover::before {
+            left: 100%;
+        }
+
+        .challenge-card:hover {
+            background: rgba(255, 255, 255, 0.06);
+            transform: translateY(-5px);
+            border-color: #4caf50;
+        }
+
+        .challenge-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .challenge-icon {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .challenge-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .badge-speed {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+        }
+
+        .badge-mastery {
+            background: rgba(156, 39, 176, 0.2);
+            color: #9c27b0;
+        }
+
+        .badge-streak {
+            background: rgba(255, 152, 0, 0.2);
+            color: #ff9800;
+        }
+
+        .badge-friend {
+            background: rgba(33, 150, 243, 0.2);
+            color: #2196f3;
+        }
+
+        .challenge-title {
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .challenge-description {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.85rem;
+            line-height: 1.4;
+            margin-bottom: 15px;
+            flex: 1;
+        }
+
+        .challenge-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .challenge-reward {
+            color: #4caf50;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .challenge-status {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.8rem;
+        }
+
+        .footer {
+            background: rgba(255, 255, 255, 0.05);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+        }
+
+        .footer-info {
+            display: flex;
+            gap: 30px;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+        }
+
+        .info-icon {
+            color: #4caf50;
+            font-size: 1rem;
+        }
+
+        .info-value {
+            color: white;
+            font-weight: 600;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border-radius: 25px;
+            border: none;
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4caf50, #66bb6a);
+            color: white;
+            box-shadow: 0 8px 20px rgba(76, 175, 80, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(76, 175, 80, 0.4);
+        }
+
+        .btn span {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Challenge Selection Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #2a3050 0%, #3a4570 100%);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-header {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        .theme-list {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+
+        .theme-item {
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: white;
+        }
+
+        .theme-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #4caf50;
+        }
+
+        .theme-item.selected {
+            background: rgba(76, 175, 80, 0.2);
+            border-color: #4caf50;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .btn-cancel {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                grid-template-rows: 70px 1fr 70px;
+            }
+
+            .header {
+                padding: 0 20px;
+            }
+
+            .header-stats {
+                display: none;
+            }
+
+            .content {
+                padding: 15px 20px;
+            }
+
+            .challenge-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .daily-challenge-card {
+                flex-direction: column;
+                text-align: center;
+                gap: 15px;
+            }
+
+            .footer-info {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="particles" id="particles"></div>
+
+    <div class="app-container">
+        <div class="header">
+            <div class="header-left">
+                <a href="/" class="back-btn">←</a>
+                <div class="page-title">
+                    <h1>Challenges</h1>
+                    <p>Test your scripture knowledge</p>
+                </div>
+            </div>
+            
+            <div class="header-stats">
+                <div class="stat-badge">
+                    <span class="stat-badge-icon">🏆</span>
+                    <div>
+                        <div class="stat-badge-value" id="completedCount">0</div>
+                        <div class="stat-badge-label">Completed</div>
+                    </div>
+                </div>
+                <div class="stat-badge">
+                    <span class="stat-badge-icon">🔥</span>
+                    <div>
+                        <div class="stat-badge-value" id="streakCount">0</div>
+                        <div class="stat-badge-label">Streak</div>
+                    </div>
+                </div>
+                <div class="stat-badge">
+                    <span class="stat-badge-icon">⭐</span>
+                    <div>
+                        <div class="stat-badge-value" id="pointsCount">0</div>
+                        <div class="stat-badge-label">Points</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="challenges-panel">
+                <!-- Daily Challenge -->
+                <div class="daily-challenge-card" onclick="startDailyChallenge()">
+                    <div class="daily-challenge-info">
+                        <div class="daily-icon">📅</div>
+                        <div class="daily-text">
+                            <h3>Daily Challenge</h3>
+                            <p id="dailyTheme">Loading...</p>
+                        </div>
+                    </div>
+                    <span class="daily-badge" id="dailyStatus">New Today</span>
+                </div>
+
+                <!-- Challenge Grid -->
+                <div class="challenge-grid">
+                    <div class="challenge-card" onclick="startSpeedChallenge()">
+                        <div class="challenge-header">
+                            <div class="challenge-icon">⚡</div>
+                            <span class="challenge-badge badge-speed">Speed</span>
+                        </div>
+                        <h3 class="challenge-title">60 Second Sprint</h3>
+                        <p class="challenge-description">Answer as many questions as possible in 60 seconds</p>
+                        <div class="challenge-footer">
+                            <span class="challenge-reward">+5 pts/question</span>
+                            <span class="challenge-status" id="speedBest">Best: --</span>
+                        </div>
+                    </div>
+
+                    <div class="challenge-card" onclick="openThemeMastery()">
+                        <div class="challenge-header">
+                            <div class="challenge-icon">🎯</div>
+                            <span class="challenge-badge badge-mastery">Mastery</span>
+                        </div>
+                        <h3 class="challenge-title">Theme Mastery</h3>
+                        <p class="challenge-description">Master a specific theme with 100% accuracy</p>
+                        <div class="challenge-footer">
+                            <span class="challenge-reward">+50 pts</span>
+                            <span class="challenge-status" id="masteredCount">0 mastered</span>
+                        </div>
+                    </div>
+
+                    <div class="challenge-card" onclick="startPerfectScore()">
+                        <div class="challenge-header">
+                            <div class="challenge-icon">💯</div>
+                            <span class="challenge-badge badge-streak">Perfect</span>
+                        </div>
+                        <h3 class="challenge-title">Perfect Score</h3>
+                        <p class="challenge-description">Get 10/10 correct answers in a row</p>
+                        <div class="challenge-footer">
+                            <span class="challenge-reward">+100 pts</span>
+                            <span class="challenge-status" id="perfectCount">0 times</span>
+                        </div>
+                    </div>
+
+                    <div class="challenge-card" onclick="startMarathon()">
+                        <div class="challenge-header">
+                            <div class="challenge-icon">🏃</div>
+                            <span class="challenge-badge badge-mastery">Marathon</span>
+                        </div>
+                        <h3 class="challenge-title">50 Question Marathon</h3>
+                        <p class="challenge-description">Complete 50 questions from random themes</p>
+                        <div class="challenge-footer">
+                            <span class="challenge-reward">+200 pts</span>
+                            <span class="challenge-status">30-45 min</span>
+                        </div>
+                    </div>
+
+                    <div class="challenge-card" onclick="openFriendChallenge()">
+                        <div class="challenge-header">
+                            <div class="challenge-icon">👥</div>
+                            <span class="challenge-badge badge-friend">Friend</span>
+                        </div>
+                        <h3 class="challenge-title">Challenge a Friend</h3>
+                        <p class="challenge-description">Create a custom challenge and share the code</p>
+                        <div class="challenge-footer">
+                            <span class="challenge-reward">Custom</span>
+                            <span class="challenge-status">Share code</span>
+                        </div>
+                    </div>
+
+                    <div class="challenge-card" onclick="startStreakChallenge()">
+                        <div class="challenge-header">
+                            <div class="challenge-icon">🔥</div>
+                            <span class="challenge-badge badge-streak">Streak</span>
+                        </div>
+                        <h3 class="challenge-title">7 Day Streak</h3>
+                        <p class="challenge-description">Complete at least one challenge per day for 7 days</p>
+                        <div class="challenge-footer">
+                            <span class="challenge-reward">+500 pts</span>
+                            <span class="challenge-status" id="currentStreak">Day 0/7</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="footer-info">
+                <div class="info-item">
+                    <span class="info-icon">📊</span>
+                    <span>Completion Rate: <span class="info-value" id="completionRate">0%</span></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-icon">🎯</span>
+                    <span>Available Themes: <span class="info-value" id="themeCount">0</span></span>
+                </div>
+            </div>
+            
+            <button class="btn btn-primary" onclick="location.href='/settings.html'">
+                <span>⚙️ Configure Themes</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Theme Selection Modal -->
+    <div class="modal" id="themeModal">
+        <div class="modal-content">
+            <h3 class="modal-header">Select a Theme</h3>
+            <div class="theme-list" id="themeList"></div>
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="startSelectedChallenge()">
+                    <span>Start Challenge</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let availableThemes = [];
+        let selectedTheme = null;
+        let currentChallengeType = null;
+
+        function createParticles() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 20; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 15 + 's';
+                particle.style.animationDuration = (15 + Math.random() * 10) + 's';
+                container.appendChild(particle);
+            }
+        }
+
+        async function loadThemes() {
+            try {
+                const response = await fetch('/api/themes');
+                const data = await response.json();
+                if (data.success && data.themes) {
+                    availableThemes = data.themes.filter(t => t.question_count > 0);
+                    document.getElementById('themeCount').textContent = availableThemes.length;
+                    updateDailyChallenge();
+                }
+            } catch (error) {
+                console.error('Error loading themes:', error);
+            }
+        }
+
+        function updateDailyChallenge() {
+            const today = new Date().toDateString();
+            let dailyTheme = localStorage.getItem('dailyChallengeTheme');
+            let dailyDate = localStorage.getItem('dailyChallengeDate');
+            
+            if (dailyDate !== today && availableThemes.length > 0) {
+                dailyTheme = availableThemes[Math.floor(Math.random() * availableThemes.length)].name;
+                localStorage.setItem('dailyChallengeTheme', dailyTheme);
+                localStorage.setItem('dailyChallengeDate', today);
+                localStorage.removeItem('dailyChallengeCompleted');
+            }
+
+            const completed = localStorage.getItem('dailyChallengeCompleted');
+            document.getElementById('dailyTheme').textContent = dailyTheme || 'No themes available';
+            document.getElementById('dailyStatus').textContent = completed ? '✓ Completed' : 'New Today';
+        }
+
+        function loadStats() {
+            const stats = JSON.parse(localStorage.getItem('challengeStats') || '{}');
+            document.getElementById('completedCount').textContent = stats.completed || 0;
+            document.getElementById('streakCount').textContent = stats.streak || 0;
+            document.getElementById('pointsCount').textContent = stats.points || 0;
+            document.getElementById('speedBest').textContent = 'Best: ' + (stats.speedBest || '--');
+            document.getElementById('masteredCount').textContent = (stats.masteredThemes || 0) + ' mastered';
+            document.getElementById('perfectCount').textContent = (stats.perfectScores || 0) + ' times';
+            
+            const completionRate = stats.completed > 0 ? Math.round((stats.completed / (stats.attempted || 1)) * 100) : 0;
+            document.getElementById('completionRate').textContent = completionRate + '%';
+
+            updateStreakDisplay();
+        }
+
+        function updateStreakDisplay() {
+            const streak = calculateStreak();
+            document.getElementById('currentStreak').textContent = `Day ${streak}/7`;
+        }
+
+        function calculateStreak() {
+            const history = JSON.parse(localStorage.getItem('challengeHistory') || '[]');
+            if (history.length === 0) return 0;
+
+            let streak = 0;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            for (let i = 0; i < 7; i++) {
+                const checkDate = new Date(today);
+                checkDate.setDate(checkDate.getDate() - i);
+                const dateStr = checkDate.toDateString();
+                
+                if (history.includes(dateStr)) {
+                    streak++;
+                } else {
+                    break;
+                }
+            }
+
+            return streak;
+        }
+
+        function startDailyChallenge() {
+            const theme = localStorage.getItem('dailyChallengeTheme');
+            if (!theme) {
+                alert('No daily challenge available. Please add themes in Settings.');
+                return;
+            }
+
+            const settings = {
+                questionCount: 10,
+                timeLimit: 0,
+                challengeType: 'daily'
+            };
+            
+            localStorage.setItem('quizSettings', JSON.stringify(settings));
+            localStorage.setItem('selectedThemes', JSON.stringify([theme]));
+            window.location.href = '/quiz.html';
+        }
+
+        function startSpeedChallenge() {
+            if (availableThemes.length === 0) {
+                alert('No themes available. Please add themes in Settings.');
+                return;
+            }
+
+            const settings = {
+                questionCount: 100,
+                timeLimit: 60,
+                challengeType: 'speed'
+            };
+            
+            localStorage.setItem('quizSettings', JSON.stringify(settings));
+            localStorage.setItem('selectedThemes', JSON.stringify(['All']));
+            window.location.href = '/quiz.html';
+        }
+
+        function openThemeMastery() {
+            if (availableThemes.length === 0) {
+                alert('No themes available. Please add themes in Settings.');
+                return;
+            }
+            currentChallengeType = 'mastery';
+            showThemeModal();
+        }
+
+        function startPerfectScore() {
+            if (availableThemes.length === 0) {
+                alert('No themes available. Please add themes in Settings.');
+                return;
+            }
+
+            const settings = {
+                questionCount: 10,
+                timeLimit: 0,
+                challengeType: 'perfect'
+            };
+            
+            localStorage.setItem('quizSettings', JSON.stringify(settings));
+            localStorage.setItem('selectedThemes', JSON.stringify(['All']));
+            window.location.href = '/quiz.html';
+        }
+
+        function startMarathon() {
+            if (availableThemes.length === 0) {
+                alert('No themes available. Please add themes in Settings.');
+                return;
+            }
+
+            const settings = {
+                questionCount: 50,
+                timeLimit: 0,
+                challengeType: 'marathon'
+            };
+            
+            localStorage.setItem('quizSettings', JSON.stringify(settings));
+            localStorage.setItem('selectedThemes', JSON.stringify(['All']));
+            window.location.href = '/quiz.html';
+        }
+
+        function openFriendChallenge() {
+            if (availableThemes.length === 0) {
+                alert('No themes available. Please add themes in Settings.');
+                return;
+            }
+            currentChallengeType = 'friend';
+            showThemeModal();
+        }
+
+        function startStreakChallenge() {
+            if (availableThemes.length === 0) {
+                alert('No themes available. Please add themes in Settings.');
+                return;
+            }
+
+            const settings = {
+                questionCount: 5,
+                timeLimit: 0,
+                challengeType: 'streak'
+            };
+            
+            localStorage.setItem('quizSettings', JSON.stringify(settings));
+            localStorage.setItem('selectedThemes', JSON.stringify(['All']));
+            window.location.href = '/quiz.html';
+        }
+
+        function showThemeModal() {
+            const modal = document.getElementById('themeModal');
+            const list = document.getElementById('themeList');
+            
+            list.innerHTML = availableThemes.map(theme => `
+                <div class="theme-item" onclick="selectTheme('${theme.name.replace(/'/g, "\\'")}')">
+                    ${theme.name} (${theme.question_count} verses)
+                </div>
+            `).join('');
+            
+            modal.classList.add('active');
+        }
+
+        function selectTheme(themeName) {
+            selectedTheme = themeName;
+            document.querySelectorAll('.theme-item').forEach(item => {
+                item.classList.remove('selected');
+                if (item.textContent.includes(themeName)) {
+                    item.classList.add('selected');
+                }
+            });
+        }
+
+        function closeModal() {
+            document.getElementById('themeModal').classList.remove('active');
+            selectedTheme = null;
+            currentChallengeType = null;
+        }
+
+        function startSelectedChallenge() {
+            if (!selectedTheme) {
+                alert('Please select a theme');
+                return;
+            }
+
+            let settings = {
+                timeLimit: 0,
+                challengeType: currentChallengeType
+            };
+
+            if (currentChallengeType === 'mastery') {
+                settings.questionCount = 20;
+            } else if (currentChallengeType === 'friend') {
+                const code = generateChallengeCode();
+                alert(`Challenge created!\n\nShare this code: ${code}\n\nTheme: ${selectedTheme}\n10 questions`);
+                settings.questionCount = 10;
+                settings.challengeCode = code;
+            }
+
+            localStorage.setItem('quizSettings', JSON.stringify(settings));
+            localStorage.setItem('selectedThemes', JSON.stringify([selectedTheme]));
+            window.location.href = '/quiz.html';
+        }
+
+        function generateChallengeCode() {
+            return 'CH' + Math.random().toString(36).substring(2, 8).toUpperCase();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            createParticles();
+            loadThemes();
+            loadStats();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,226 @@
+package admin
+
+import (
+	"bible-quiz-pro/database"
+	"bible-quiz-pro/models"
+
+	"github.com/gofiber/fiber/v2"
+)
+
+// GetChallenges returns all challenges
+func GetChallenges(c *fiber.Ctx) error {
+	db := database.GetDB()
+
+	var challenges []models.Challenge
+	if err := db.Preload("User").Find(&challenges).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Failed to fetch challenges",
+		})
+	}
+
+	return c.JSON(challenges)
+}
+
+// GetChallenge returns a single challenge by ID
+func GetChallenge(c *fiber.Ctx) error {
+	db := database.GetDB()
+	id := c.Params("id")
+
+	var challenge models.Challenge
+	if err := db.Preload("User").First(&challenge, id).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{
+			"error": "Challenge not found",
+		})
+	}
+
+	return c.JSON(challenge)
+}
+
+// CreateChallenge creates a new challenge
+func CreateChallenge(c *fiber.Ctx) error {
+	db := database.GetDB()
+
+	var challenge models.Challenge
+	if err := c.BodyParser(&challenge); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "Invalid request body",
+		})
+	}
+
+	// Validate required fields
+	if challenge.Title == "" {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "Challenge title is required",
+		})
+	}
+
+	if challenge.UserID == nil {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "User ID is required",
+		})
+	}
+
+	if err := db.Create(&challenge).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Failed to create challenge",
+		})
+	}
+
+	return c.Status(201).JSON(challenge)
+}
+
+// UpdateChallenge updates an existing challenge
+func UpdateChallenge(c *fiber.Ctx) error {
+	db := database.GetDB()
+	id := c.Params("id")
+
+	var challenge models.Challenge
+	if err := db.First(&challenge, id).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{
+			"error": "Challenge not found",
+		})
+	}
+
+	// Parse update data
+	var updateData models.Challenge
+	if err := c.BodyParser(&updateData); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "Invalid request body",
+		})
+	}
+
+	// Update fields
+	if updateData.Title != "" {
+		challenge.Title = updateData.Title
+	}
+	if updateData.Description != "" {
+		challenge.Description = updateData.Description
+	}
+	if updateData.Difficulty != "" {
+		challenge.Difficulty = updateData.Difficulty
+	}
+	if updateData.XPReward > 0 {
+		challenge.XPReward = updateData.XPReward
+	}
+	challenge.IsActive = updateData.IsActive
+
+	if err := db.Save(&challenge).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Failed to update challenge",
+		})
+	}
+
+	return c.JSON(challenge)
+}
+
+// DeleteChallenge deletes a challenge
+func DeleteChallenge(c *fiber.Ctx) error {
+	db := database.GetDB()
+	id := c.Params("id")
+
+	// Check if challenge exists
+	var challenge models.Challenge
+	if err := db.First(&challenge, id).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{
+			"error": "Challenge not found",
+		})
+	}
+
+	// Delete challenge
+	if err := db.Delete(&challenge).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Failed to delete challenge",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"message": "Challenge deleted successfully",
+	})
+}
+
+// GetChallengeLeaderboard returns the leaderboard for a challenge
+func GetChallengeLeaderboard(c *fiber.Ctx) error {
+	db := database.GetDB()
+	challengeId := c.Params("id")
+
+	var attempts []models.Attempt
+	if err := db.Where("challenge_id = ?", challengeId).
+		Order("score DESC").
+		Limit(100).
+		Preload("User").
+		Find(&attempts).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Failed to fetch leaderboard",
+		})
+	}
+
+	return c.JSON(attempts)
+}
+
+// ToggleChallengeStatus activates or deactivates a challenge
+func ToggleChallengeStatus(c *fiber.Ctx) error {
+	db := database.GetDB()
+	id := c.Params("id")
+
+	var challenge models.Challenge
+	if err := db.First(&challenge, id).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{
+			"error": "Challenge not found",
+		})
+	}
+
+	// Toggle status
+	challenge.IsActive = !challenge.IsActive
+
+	if err := db.Save(&challenge).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Failed to update challenge status",
+		})
+	}
+
+	return c.JSON(challenge)
+}
+
+// GetDailyChallenges returns all daily challenges
+func GetDailyChallenges(c *fiber.Ctx) error {
+	db := database.GetDB()
+
+	var challenges []models.Challenge
+	if err := db.Where("is_daily = ?", true).
+		Order("created_at DESC").
+		Find(&challenges).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Failed to fetch daily challenges",
+		})
+	}
+
+	return c.JSON(challenges)
+}
+
+// SetDailyChallenge sets a challenge as the daily challenge
+func SetDailyChallenge(c *fiber.Ctx) error {
+	db := database.GetDB()
+	id := c.Params("id")
+
+	// First, unset any existing daily challenge
+	db.Model(&models.Challenge{}).Where("is_daily = ?", true).Update("is_daily", false)
+
+	// Set the new daily challenge
+	var challenge models.Challenge
+	if err := db.First(&challenge, id).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{
+			"error": "Challenge not found",
+		})
+	}
+
+	challenge.IsDaily = true
+	challenge.IsActive = true
+
+	if err := db.Save(&challenge).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Failed to set daily challenge",
+		})
+	}
+
+	return c.JSON(challenge)
+}

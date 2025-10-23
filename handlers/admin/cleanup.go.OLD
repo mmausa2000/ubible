@@ -1,0 +1,91 @@
+// handlers/admin/cleanup.go
+package admin
+
+import (
+	"bible-quiz-pro/services"
+
+	"github.com/gofiber/fiber/v2"
+)
+
+// ManualCleanup triggers an immediate guest account cleanup
+func ManualCleanup(c *fiber.Ctx) error {
+	cleanupService := services.GetCleanupService()
+	if cleanupService == nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Cleanup service not initialized",
+		})
+	}
+
+	// Trigger cleanup
+	if err := cleanupService.ManualCleanup(); err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Cleanup failed: " + err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"message": "Cleanup completed successfully",
+	})
+}
+
+// GetCleanupStats returns statistics about guest cleanup
+func GetCleanupStats(c *fiber.Ctx) error {
+	cleanupService := services.GetCleanupService()
+	if cleanupService == nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Cleanup service not initialized",
+		})
+	}
+
+	stats, err := cleanupService.GetStats()
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Failed to get stats: " + err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"stats":   stats,
+	})
+}
+
+// CleanupInactiveUsers removes users inactive for specified days
+func CleanupInactiveUsers(c *fiber.Ctx) error {
+	// Parse request body
+	type Request struct {
+		InactiveDays int `json:"inactive_days"`
+	}
+
+	var req Request
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "Invalid request body",
+		})
+	}
+
+	if req.InactiveDays < 180 {
+		return c.Status(400).JSON(fiber.Map{
+			"error": "Inactive days must be at least 180 to prevent accidental deletion",
+		})
+	}
+
+	cleanupService := services.GetCleanupService()
+	if cleanupService == nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Cleanup service not initialized",
+		})
+	}
+
+	if err := cleanupService.CleanupInactiveUsers(req.InactiveDays); err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"error": "Cleanup failed: " + err.Error(),
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"message": "Inactive users cleaned successfully",
+	})
+}

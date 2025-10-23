@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>U Bible - Login</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 50%, #16213e 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .auth-container {
+      max-width: 400px;
+      width: 90%;
+      padding: 40px;
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(20px);
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    h1 {
+      color: white;
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 2rem;
+    }
+    .auth-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 30px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: white;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+    .tab-btn.active {
+      background: #4caf50;
+    }
+    .auth-form {
+      display: none;
+    }
+    .auth-form.active {
+      display: block;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-input {
+      width: 100%;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      color: white;
+      font-size: 1rem;
+    }
+    .form-input::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 1rem;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #4caf50, #66bb6a);
+      color: white;
+    }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+    .guest-option {
+      text-align: center;
+      margin-top: 30px;
+      padding-top: 30px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .guest-option p {
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 15px;
+    }
+    .error-message {
+      color: #f44336;
+      margin-top: 10px;
+      font-size: 0.9rem;
+    }
+    .success-message {
+      color: #4caf50;
+      margin-top: 10px;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <h1>📖 U Bible</h1>
+    
+    <div class="auth-tabs">
+      <button class="tab-btn active" onclick="showTab('login')">Login</button>
+      <button class="tab-btn" onclick="showTab('register')">Register</button>
+    </div>
+    
+    <form class="auth-form active" id="loginForm">
+      <div class="form-group">
+        <input type="text" class="form-input" id="loginUsername" 
+               placeholder="Username or Email" required>
+      </div>
+      <div class="form-group">
+        <input type="password" class="form-input" id="loginPassword" 
+               placeholder="Password" required>
+      </div>
+      <button type="submit" class="btn btn-primary">Login</button>
+      <div id="loginError" class="error-message"></div>
+    </form>
+    
+    <form class="auth-form" id="registerForm">
+      <div class="form-group">
+        <input type="text" class="form-input" id="registerUsername" 
+               placeholder="Username" required minlength="3">
+      </div>
+      <div class="form-group">
+        <input type="email" class="form-input" id="registerEmail" 
+               placeholder="Email" required>
+      </div>
+      <div class="form-group">
+        <input type="password" class="form-input" id="registerPassword" 
+               placeholder="Password" required minlength="6">
+      </div>
+      <button type="submit" class="btn btn-primary">Register</button>
+      <div id="registerError" class="error-message"></div>
+    </form>
+    
+    <div class="guest-option">
+      <p>Want to try it out first?</p>
+      <button class="btn btn-secondary" onclick="playAsGuest()">
+        Play as Guest
+      </button>
+    </div>
+  </div>
+  
+  <script>
+    function showTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      document.querySelectorAll('.auth-form').forEach(form => {
+        form.classList.remove('active');
+      });
+      
+      if (tab === 'login') {
+        document.querySelectorAll('.tab-btn')[0].classList.add('active');
+        document.getElementById('loginForm').classList.add('active');
+      } else {
+        document.querySelectorAll('.tab-btn')[1].classList.add('active');
+        document.getElementById('registerForm').classList.add('active');
+      }
+    }
+    
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const username = document.getElementById('loginUsername').value;
+      const password = document.getElementById('loginPassword').value;
+      
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('user', JSON.stringify(data.user));
+          window.location.href = '/';
+        } else {
+          document.getElementById('loginError').textContent = data.error;
+        }
+      } catch (error) {
+        document.getElementById('loginError').textContent = 'Login failed';
+      }
+    });
+    
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const username = document.getElementById('registerUsername').value;
+      const email = document.getElementById('registerEmail').value;
+      const password = document.getElementById('registerPassword').value;
+      
+      try {
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, email, password })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('user', JSON.stringify(data.user));
+          window.location.href = '/';
+        } else {
+          document.getElementById('registerError').textContent = 
+            data.error || 'Registration failed';
+        }
+      } catch (error) {
+        document.getElementById('registerError').textContent = 'Registration failed';
+      }
+    });
+    
+    async function playAsGuest() {
+      const guestName = prompt('Enter a guest name (optional):');
+      
+      try {
+        const response = await fetch('/api/auth/guest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ guestName })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('user', JSON.stringify(data.user));
+          localStorage.setItem('isGuest', 'true');
+          window.location.href = '/';
+        }
+      } catch (error) {
+        alert('Failed to create guest account');
+      }
+    }
+    
+    const token = localStorage.getItem('token');
+    if (token) {
+      window.location.href = '/';
+    }
+  </script>
+
+
+
+
+
+  <div id="authModal" class="auth-modal">
+  <div class="auth-modal-content">
+    <button class="auth-close-btn" onclick="closeAuthModal()">&times;</button>
+    
+    <div class="auth-header">
+      <h2>📖 U Bible</h2>
+      <p id="authSubtitle">Login to save your progress</p>
+    </div>
+    
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login')">Login</button>
+      <button class="auth-tab" onclick="switchAuthTab('register')">Sign Up</button>
+      <button class="auth-tab" onclick="switchAuthTab('guest')">Guest</button>
+    </div>
+    
+    <!-- Login Form -->
+    <form class="auth-form active" id="loginForm" onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <input type="text" class="form-input" id="loginUsername" 
+               placeholder="Username or Email" required>
+      </div>
+      <div class="form-group">
+        <input type="password" class="form-input" id="loginPassword" 
+               placeholder="Password" required>
+      </div>
+      <button type="submit" class="btn btn-primary">Login</button>
+      <div class="form-links">
+        <a href="#" onclick="showForgotPassword(); return false;">Forgot Password?</a>
+      </div>
+      <div id="loginError" class="auth-error"></div>
+    </form>
+    
+    <!-- Register Form -->
+    <form class="auth-form" id="registerForm" onsubmit="handleRegister(event)">
+      <div class="form-group">
+        <input type="text" class="form-input" id="registerUsername" 
+               placeholder="Choose a username" required minlength="3">
+      </div>
+      <div class="form-group">
+        <input type="email" class="form-input" id="registerEmail" 
+               placeholder="Email address" required>
+      </div>
+      <div class="form-group">
+        <input type="password" class="form-input" id="registerPassword" 
+               placeholder="Password (min 6 characters)" required minlength="6">
+      </div>
+      <button type="submit" class="btn btn-primary">Create Account</button>
+      <div id="registerError" class="auth-error"></div>
+    </form>
+    
+    <!-- Guest Form -->
+    <div class="auth-form" id="guestForm">
+      <div class="guest-info">
+        <p>Play as a guest to try out the game!</p>
+        <ul>
+          <li>✓ Access all game modes</li>
+          <li>✓ Practice and take quizzes</li>
+          <li>✓ Play multiplayer</li>
+          <li>⚠️ Progress saved temporarily</li>
+        </ul>
+      </div>
+      <div class="form-group">
+        <input type="text" class="form-input" id="guestName" 
+               placeholder="Enter a nickname (optional)">
+      </div>
+      <button class="btn btn-primary" onclick="playAsGuest()">Play as Guest</button>
+      <p class="guest-note">You can create an account later to save your progress!</p>
+    </div>
+    
+    <!-- Success Message -->
+    <div class="auth-success" id="authSuccess" style="display: none;">
+      <div class="success-icon">✓</div>
+      <h3 id="successTitle">Welcome back!</h3>
+      <p id="successMessage">Redirecting...</p>
+    </div>
+  </div>
+</div>
+
+<!-- User Menu (for logged-in users) -->
+<div id="userMenu" class="user-menu" style="display: none;">
+  <div class="user-avatar" onclick="toggleUserDropdown()">
+    <span id="userInitial">?</span>
+  </div>
+  <div id="userDropdown" class="user-dropdown">
+    <div class="user-info">
+      <strong id="userName">Guest</strong>
+      <span id="userEmail" class="user-email"></span>
+      <span id="userType" class="user-badge"></span>
+    </div>
+    <div class="dropdown-divider"></div>
+    <a href="#" onclick="showProfile(); return false;">
+      <span>👤</span> Profile
+    </a>
+    <a href="#" onclick="showStats(); return false;">
+      <span>📊</span> Statistics
+    </a>
+    <a href="#" onclick="showSettings(); return false;">
+      <span>⚙️</span> Settings
+    </a>
+    <div class="dropdown-divider"></div>
+    <a href="#" onclick="logout(); return false;" class="logout-link">
+      <span>🚪</span> Logout
+    </a>
+  </div>
+</div>
+
+<!-- Upgrade Prompt for Guests -->
+<div id="upgradePrompt" class="upgrade-prompt" style="display: none;">
+  <div class="upgrade-content">
+    <button class="close-upgrade" onclick="closeUpgradePrompt()">&times;</button>
+    <h3>🎉 Great Progress!</h3>
+    <p>You've completed <span id="guestGamesCount">5</span> games!</p>
+    <p>Create a free account to:</p>
+    <ul>
+      <li>✓ Save your progress permanently</li>
+      <li>✓ Track your statistics</li>
+      <li>✓ Compete on leaderboards</li>
+      <li>✓ Unlock achievements</li>
+    </ul>
+    <button class="btn btn-primary" onclick="showUpgradeForm()">Upgrade Account</button>
+    <button class="btn btn-secondary" onclick="closeUpgradePrompt()">Maybe Later</button>
+  </div>
+</div>
+
+<style>
+/* Authentication Modal Styles */
+.auth-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(5px);
+  z-index: 10000;
+  animation: fadeIn 0.3s ease;
+}
+
+.auth-modal.show {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.auth-modal-content {
+  background: linear-gradient(135deg, #2a3050 0%, #3a4570 100%);
+  border-radius: 25px;
+  padding: 40px;
+  max-width: 450px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  animation: slideUp 0.4s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.auth-close-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 28px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.auth-close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  transform: rotate(90deg);
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 30px;
+  color: white;
+}
+
+.auth-header h2 {
+  font-size: 2rem;
+  margin-bottom: 10px;
+}
+
+.auth-header p {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.95rem;
+}
+
+.auth-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 30px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 5px;
+  border-radius: 15px;
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 12px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.auth-tab:hover {
+  color: white;
+}
+
+.auth-tab.active {
+  background: #4caf50;
+  color: white;
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+}
+
+.auth-form {
+  display: none;
+  animation: fadeIn 0.3s ease;
+}
+
+.auth-form.active {
+  display: block;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  color: white;
+  font-size: 1rem;
+  transition: all 0.3s;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #4caf50;
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+}
+
+.form-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #4caf50, #66bb6a);
+  color: white;
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.form-links {
+  text-align: center;
+  margin-top: 15px;
+}
+
+.form-links a {
+  color: #4caf50;
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: all 0.3s;
+}
+
+.form-links a:hover {
+  color: #66bb6a;
+  text-decoration: underline;
+}
+
+.auth-error {
+  color: #f44336;
+  text-align: center;
+  margin-top: 15px;
+  font-size: 0.9rem;
+  animation: shake 0.5s ease;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+.auth-success {
+  text-align: center;
+  padding: 40px;
+  animation: fadeIn 0.5s ease;
+}
+
+.success-icon {
+  width: 80px;
+  height: 80px;
+  background: #4caf50;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  color: white;
+  margin: 0 auto 20px;
+  animation: scaleIn 0.5s ease;
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+.guest-info {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.guest-info p {
+  color: white;
+  margin-bottom: 15px;
+}
+
+.guest-info ul {
+  list-style: none;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.guest-info li {
+  padding: 5px 0;
+}
+
+.guest-note {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+  margin-top: 15px;
+}
+
+/* User Menu Styles */
+.user-menu {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+
+.user-avatar {
+  width: 45px;
+  height: 45px;
+  background: linear-gradient(135deg, #4caf50, #66bb6a);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 1.2rem;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s;
+}
+
+.user-avatar:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.user-dropdown {
+  position: absolute;
+  top: 60px;
+  right: 0;
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  min-width: 250px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.3s;
+}
+
+.user-dropdown.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.user-info {
+  padding: 20px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.user-info strong {
+  display: block;
+  color: #333;
+  margin-bottom: 5px;
+}
+
+.user-email {
+  display: block;
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.user-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  background: #4caf50;
+  color: white;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  margin-top: 5px;
+  font-weight: 600;
+}
+
+.user-badge.guest {
+  background: #ff9800;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: #e0e0e0;
+}
+
+.user-dropdown a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  color: #333;
+  text-decoration: none;
+  transition: all 0.3s;
+}
+
+.user-dropdown a:hover {
+  background: #f5f5f5;
+}
+
+.logout-link {
+  color: #f44336 !important;
+}
+
+/* Upgrade Prompt */
+.upgrade-prompt {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  max-width: 350px;
+  z-index: 999;
+  animation: slideInRight 0.5s ease;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.upgrade-content {
+  padding: 25px;
+  position: relative;
+}
+
+.close-upgrade {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #999;
+  cursor: pointer;
+}
+
+.upgrade-content h3 {
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.upgrade-content p {
+  color: #666;
+  margin-bottom: 15px;
+}
+
+.upgrade-content ul {
+  list-style: none;
+  margin-bottom: 20px;
+}
+
+.upgrade-content li {
+  color: #555;
+  padding: 5px 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .auth-modal-content {
+    padding: 30px 20px;
+    margin: 20px;
+  }
+  
+  .user-menu {
+    top: 10px;
+    right: 10px;
+  }
+  
+  .upgrade-prompt {
+    left: 10px;
+    right: 10px;
+    max-width: none;
+  }
+}
+</style>
+
+<script>
+// Authentication Modal JavaScript
+class AuthModal {
+  constructor() {
+    this.modal = document.getElementById('authModal');
+    this.token = localStorage.getItem('token');
+    this.user = JSON.parse(localStorage.getItem('user') || 'null');
+    this.guestGamesPlayed = parseInt(localStorage.getItem('guestGamesPlayed') || '0');
+    
+    this.init();
+  }
+  
+  init() {
+    // Check if user is logged in
+    if (this.token && this.user) {
+      this.showUserMenu();
+    } else {
+      this.addAuthButton();
+    }
+    
+    // Check if guest should see upgrade prompt
+    if (this.user?.accountType === 'guest' && this.guestGamesPlayed >= 3) {
+      setTimeout(() => this.showUpgradePrompt(), 5000);
+    }
+    
+    // Close modal on background click
+    this.modal?.addEventListener('click', (e) => {
+      if (e.target === this.modal) {
+        this.closeModal();
+      }
+    });
+    
+    // Handle ESC key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.modal?.classList.contains('show')) {
+        this.closeModal();
+      }
+    });
+  }
+  
+  addAuthButton() {
+    // Add login button to header if it doesn't exist
+    const header = document.querySelector('.header-stats, .header-right, .header');
+    if (header && !document.getElementById('authButton')) {
+      const authBtn = document.createElement('button');
+      authBtn.id = 'authButton';
+      authBtn.className = 'btn btn-primary';
+      authBtn.textContent = 'Login / Sign Up';
+      authBtn.onclick = () => this.openModal();
+      authBtn.style.cssText = 'padding: 10px 20px; font-size: 0.9rem;';
+      header.appendChild(authBtn);
+    }
+  }
+  
+  openModal(tab = 'login') {
+    this.modal.classList.add('show');
+    this.switchTab(tab);
+    document.body.style.overflow = 'hidden';
+  }
+  
+  closeModal() {
+    this.modal.classList.remove('show');
+    document.body.style.overflow = '';
+    this.clearErrors();
+  }
+  
+  switchTab(tab) {
+    // Update tabs
+    document.querySelectorAll('.auth-tab').forEach(t => {
+      t.classList.toggle('active', t.textContent.toLowerCase().includes(tab));
+    });
+    
+    // Update forms
+    document.querySelectorAll('.auth-form').forEach(f => {
+      f.classList.remove('active');
+    });
+    
+    const formMap = {
+      'login': 'loginForm',
+      'register': 'registerForm',
+      'sign up': 'registerForm',
+      'guest': 'guestForm'
+    };
+    
+    const formId = formMap[tab] || formMap[tab.toLowerCase()];
+    if (formId) {
+      document.getElementById(formId)?.classList.add('active');
+    }
+    
+    // Update subtitle
+    const subtitles = {
+      'login': 'Login to save your progress',
+      'register': 'Create your free account',
+      'sign up': 'Create your free account',
+      'guest': 'Try before you sign up!'
+    };
+    
+    document.getElementById('authSubtitle').textContent = subtitles[tab] || subtitles[tab.toLowerCase()];
+  }
+  
+  async handleLogin(event) {
+    event.preventDefault();
+    this.clearErrors();
+    
+    const username = document.getElementById('loginUsername').value;
+    const password = document.getElementById('loginPassword').value;
+    
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        this.onAuthSuccess(data, 'Welcome back!');
+      } else {
+        this.showError('loginError', data.error || 'Login failed');
+      }
+    } catch (error) {
+      this.showError('loginError', 'Connection error. Please try again.');
+    }
+  }
+  
+  async handleRegister(event) {
+    event.preventDefault();
+    this.clearErrors();
+    
+    const username = document.getElementById('registerUsername').value;
+    const email = document.getElementById('registerEmail').value;
+    const password = document.getElementById('registerPassword').value;
+    
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, email, password })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        this.onAuthSuccess(data, 'Account created successfully!');
+      } else {
+        this.showError('registerError', data.error || 'Registration failed');
+      }
+    } catch (error) {
+      this.showError('registerError', 'Connection error. Please try again.');
+    }
+  }
+  
+  async playAsGuest() {
+    const guestName = document.getElementById('guestName').value || 
+                      'Guest_' + Math.floor(Math.random() * 10000);
+    
+    try {
+      const response = await fetch('/api/auth/guest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ guestName })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        localStorage.setItem('isGuest', 'true');
+        this.onAuthSuccess(data, 'Welcome, ' + guestName + '!');
+      } else {
+        this.showError('guestError', 'Failed to create guest account');
+      }
+    } catch (error) {
+      this.showError('guestError', 'Connection error. Please try again.');
+    }
+  }
+  
+  onAuthSuccess(data, message) {
+    // Store credentials
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    
+    // Show success message
+    this.showSuccess(message);
+    
+    // Update UI
+    setTimeout(() => {
+      this.closeModal();
+      this.showUserMenu();
+      
+      // Reload if on login page, otherwise update UI
+      if (window.location.pathname === '/login') {
+        window.location.href = '/';
+      } else {
+        // Update any auth-dependent UI elements
+        this.updateAuthUI();
+      }
+    }, 1500);
+  }
+  
+  showUserMenu() {
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user) return;
+    
+    // Hide login button
+    const authBtn = document.getElementById('authButton');
+    if (authBtn) authBtn.style.display = 'none';
+    
+    // Show user menu
+    const userMenu = document.getElementById('userMenu');
+    if (userMenu) {
+      userMenu.style.display = 'block';
+      
+      // Update user info
+      document.getElementById('userInitial').textContent = 
+        (user.displayName || user.username || 'G')[0].toUpperCase();
+      document.getElementById('userName').textContent = 
+        user.displayName || user.username || 'Guest';
+      document.getElementById('userEmail').textContent = user.email || '';
+      
+      const badge = document.getElementById('userType');
+      if (user.accountType === 'guest') {
+        badge.textContent = 'Guest';
+        badge.className = 'user-badge guest';
+      } else {
+        badge.textContent = 'Member';
+        badge.className = 'user-badge';
+      }
+    }
+  }
+  
+  toggleUserDropdown() {
+    const dropdown = document.getElementById('userDropdown');
+    dropdown?.classList.toggle('show');
+    
+    // Close on click outside
+    document.addEventListener('click', function closeDropdown(e) {
+      if (!e.target.closest('.user-menu')) {
+        dropdown?.classList.remove('show');
+        document.removeEventListener('click', closeDropdown);
+      }
+    });
+  }
+  
+  logout() {
+    if (confirm('Are you sure you want to logout?')) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('isGuest');
+      window.location.reload();
+    }
+  }
+  
+  showUpgradePrompt() {
+    const prompt = document.getElementById('upgradePrompt');
+    if (prompt) {
+      document.getElementById('guestGamesCount').textContent = this.guestGamesPlayed;
+      prompt.style.display = 'block';
+    }
+  }
+  
+  closeUpgradePrompt() {
+    const prompt = document.getElementById('upgradePrompt');
+    if (prompt) prompt.style.display = 'none';
+    
+    // Don't show again for 24 hours
+    localStorage.setItem('upgradePromptDismissed', Date.now());
+  }
+  
+  showUpgradeForm() {
+    this.closeUpgradePrompt();
+    this.openModal('register');
+  }
+  
+  showError(elementId, message) {
+    const element = document.getElementById(elementId);
+    if (element) {
+      element.textContent = message;
+      element.style.display = 'block';
+    }
+  }
+  
+  clearErrors() {
+    document.querySelectorAll('.auth-error').forEach(el => {
+      el.textContent = '';
+      el.style.display = 'none';
+    });
+  }
+  
+  showSuccess(title) {
+    document.getElementById('successTitle').textContent = title;
+    document.getElementById('authSuccess').style.display = 'block';
+    
+    // Hide forms
+    document.querySelectorAll('.auth-form, .auth-tabs').forEach(el => {
+      el.style.display = 'none';
+    });
+  }
+  
+  updateAuthUI() {
+    // Dispatch event for other components
+    window.dispatchEvent(new CustomEvent('authStateChanged', {
+      detail: { user: this.user, isAuthenticated: !!this.token }
+    }));
+  }
+}
+
+// Global functions for onclick handlers
+function closeAuthModal() {
+  authModalInstance.closeModal();
+}
+
+function switchAuthTab(tab) {
+  authModalInstance.switchTab(tab);
+}
+
+function handleLogin(event) {
+  authModalInstance.handleLogin(event);
+}
+
+function handleRegister(event) {
+  authModalInstance.handleRegister(event);
+}
+
+function playAsGuest() {
+  authModalInstance.playAsGuest();
+}
+
+function toggleUserDropdown() {
+  authModalInstance.toggleUserDropdown();
+}
+
+function logout() {
+  authModalInstance.logout();
+}
+
+function closeUpgradePrompt() {
+  authModalInstance.closeUpgradePrompt();
+}
+
+function showUpgradeForm() {
+  authModalInstance.showUpgradeForm();
+}
+
+function showProfile() {
+  alert('Profile page coming soon!');
+}
+
+function showStats() {
+  alert('Statistics page coming soon!');
+}
+
+function showSettings() {
+  window.location.href = '/settings.html';
+}
+
+function showForgotPassword() {
+  alert('Password reset coming soon! Contact support for help.');
+}
+
+// Initialize when DOM is ready
+let authModalInstance;
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    authModalInstance = new AuthModal();
+  });
+} else {
+  authModalInstance = new AuthModal();
+}
+
+// Track guest games
+if (localStorage.getItem('user')) {
+  const user = JSON.parse(localStorage.getItem('user'));
+  if (user.accountType === 'guest') {
+    window.addEventListener('gameComplete', () => {
+      const count = parseInt(localStorage.getItem('guestGamesPlayed') || '0');
+      localStorage.setItem('guestGamesPlayed', count + 1);
+      
+      if (count + 1 === 3 || count + 1 === 10) {
+        setTimeout(() => authModalInstance.showUpgradePrompt(), 3000);
+      }
+    });
+  }
+}
+</script>
+</body>
+</html>
