@@ -1638,6 +1638,19 @@ Examples:
     </div>
 
     <script>
+        function normalizeToUTF8(text) {
+            if (!text) return text;
+            let normalized = text;
+            normalized = normalized.replace(/â€"/g, '—');
+            normalized = normalized.replace(/â€"/g, '"');
+            normalized = normalized.replace(/â€œ/g, '"');
+            normalized = normalized.replace(/['']/g, "'");
+            normalized = normalized.replace(/[""]/g, '"');
+            normalized = normalized.replace(/ [-–] /g, ' — ');
+            if (normalized.normalize) normalized = normalized.normalize('NFC');
+            return normalized.trim();
+        }
+
         const timeValues = [5, 10, 20];
         const questionValues = [10, 20, 30];
         let availableThemes = [];
@@ -2000,6 +2013,22 @@ Examples:
                 </div>
             `;
             container.appendChild(entry);
+            
+            // Add paste event listeners to normalize UTF-8 mojibake
+            entry.querySelectorAll('.form-input').forEach(input => {
+                input.addEventListener('paste', (e) => {
+                    e.preventDefault();
+                    const pasted = (e.clipboardData || window.clipboardData).getData('text');
+                    const normalized = normalizeToUTF8(pasted);
+                    const start = input.selectionStart;
+                    const end = input.selectionEnd;
+                    const val = input.value;
+                    input.value = val.substring(0, start) + normalized + val.substring(end);
+                    input.selectionStart = input.selectionEnd = start + normalized.length;
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                });
+            });
+            
             updateProgressAndSaveState();
         }
 
@@ -2137,8 +2166,11 @@ Examples:
             const bulk = document.getElementById('bulkInput');
             const raw = bulk.value || '';
             
+            // Normalize UTF-8 mojibake first
+            const normalizedRaw = normalizeToUTF8(raw);
+            
             // Only normalize separators and convert formats, don't strip numbers yet
-            const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+            const lines = normalizedRaw.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
             if (lines.length === 0) {
                 alert('Please paste at least one verse.');
                 return;
@@ -2222,7 +2254,10 @@ Examples:
             const entries = Array.from(document.querySelectorAll('.verse-entry'))
                 .map(e => {
                     const inputs = e.querySelectorAll('.form-input');
-                    return { ref: inputs[0]?.value.trim() || '', text: inputs[1]?.value.trim() || '' };
+                    return { 
+                        ref: normalizeToUTF8(inputs[0]?.value.trim() || ''), 
+                        text: normalizeToUTF8(inputs[1]?.value.trim() || '') 
+                    };
                 })
                 .filter(v => v.ref.length >= 3 && v.text.length >= 5);
 
@@ -2250,13 +2285,13 @@ Examples:
         }
 
         async function saveTheme() {
-            const themeName = document.getElementById('themeName').value.trim();
+            const themeName = normalizeToUTF8(document.getElementById('themeName').value.trim());
             const entries = Array.from(document.querySelectorAll('.verse-entry'))
                 .map(e => {
                     const inputs = e.querySelectorAll('.form-input');
                     return { 
-                        reference: inputs[0]?.value.trim() || '', 
-                        text: inputs[1]?.value.trim() || '' 
+                        reference: normalizeToUTF8(inputs[0]?.value.trim() || ''), 
+                        text: normalizeToUTF8(inputs[1]?.value.trim() || '') 
                     };
                 })
                 .filter(v => v.reference.length >= 3 && v.text.length >= 5);
@@ -2351,6 +2386,22 @@ Examples:
             loadThemes();
             addVerseEntry();
             setupFileDrop();
+            
+            // Add paste event listener to bulk input for UTF-8 normalization
+            const bulkInput = document.getElementById('bulkInput');
+            if (bulkInput) {
+                bulkInput.addEventListener('paste', (e) => {
+                    e.preventDefault();
+                    const pasted = (e.clipboardData || window.clipboardData).getData('text');
+                    const normalized = normalizeToUTF8(pasted);
+                    const start = bulkInput.selectionStart;
+                    const end = bulkInput.selectionEnd;
+                    const val = bulkInput.value;
+                    bulkInput.value = val.substring(0, start) + normalized + val.substring(end);
+                    bulkInput.selectionStart = bulkInput.selectionEnd = start + normalized.length;
+                    bulkInput.dispatchEvent(new Event('input', { bubbles: true }));
+                });
+            }
             
             // Event delegation for theme cards
             document.getElementById('themeGrid').addEventListener('click', (e) => {
