@@ -1597,7 +1597,7 @@
                 </div>
 
                 <!-- Waiting Room View -->
-                <div id="multiplayerWaitingRoom" style="display: none; padding: 10px 0; display: flex; flex-direction: column; height: 100%;">
+                <div id="multiplayerWaitingRoom" style="display: none; padding: 10px 0; flex-direction: column; height: 100%;">
                     <h3 id="waitingRoomTitle" style="color: white; margin-bottom: 15px; text-align: center;">🏠 Private Room</h3>
 
                     <div class="room-code-display" style="text-align: center; margin-bottom: 20px; padding: 15px; background: rgba(76, 175, 80, 0.1); border-radius: 10px; border: 1px solid rgba(76, 175, 80, 0.3);">
@@ -4049,17 +4049,35 @@ An interactive Bible verse learning application with multiplayer support.
         // Multiplayer view switching within the modal
         function showMultiplayerView(viewName) {
             // Hide all multiplayer views
-            document.getElementById('multiplayerMainMenu').style.display = 'none';
-            document.getElementById('multiplayerSearching').style.display = 'none';
-            document.getElementById('multiplayerCreateRoom').style.display = 'none';
-            document.getElementById('multiplayerJoinRoom').style.display = 'none';
-            document.getElementById('multiplayerWaitingRoom').style.display = 'none';
+            const sections = [
+                'multiplayerMainMenu',
+                'multiplayerSearching',
+                'multiplayerCreateRoom',
+                'multiplayerJoinRoom',
+                'multiplayerWaitingRoom'
+            ];
+            for (const id of sections) {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            }
 
-            // Show the selected view
-            if (viewName === 'main') {
-                document.getElementById('multiplayerMainMenu').style.display = 'flex';
-            } else if (viewName === 'searching') {
-                document.getElementById('multiplayerSearching').style.display = 'block';
+            // Map view names to section IDs
+            const map = {
+                main: 'multiplayerMainMenu',
+                searching: 'multiplayerSearching',
+                createRoom: 'multiplayerCreateRoom',
+                joinRoom: 'multiplayerJoinRoom',
+                waitingRoom: 'multiplayerWaitingRoom',
+            };
+            const targetId = map[viewName] || 'multiplayerMainMenu';
+            const target = document.getElementById(targetId);
+            if (!target) return;
+
+            // Set display based on section type
+            target.style.display = (targetId === 'multiplayerWaitingRoom' || targetId === 'multiplayerMainMenu') ? 'flex' : 'block';
+
+            // Execute view-specific actions
+            if (viewName === 'searching') {
                 // Start quick match
                 if (!multiplayerManager.isConnected) {
                     multiplayerManager.connect();
@@ -4068,18 +4086,14 @@ An interactive Bible verse learning application with multiplayer support.
                     multiplayerManager.findMatch();
                 }
             } else if (viewName === 'createRoom') {
-                document.getElementById('multiplayerCreateRoom').style.display = 'block';
                 // Load themes for room creation
                 loadThemesForRoomIntegrated();
             } else if (viewName === 'joinRoom') {
-                document.getElementById('multiplayerJoinRoom').style.display = 'block';
                 // Focus on input
                 setTimeout(() => {
                     const input = document.getElementById('roomCodeInputIntegrated');
                     if (input) input.focus();
                 }, 50);
-            } else if (viewName === 'waitingRoom') {
-                document.getElementById('multiplayerWaitingRoom').style.display = 'flex';
             }
 
             console.log(`🔀 Multiplayer view: ${viewName}`);

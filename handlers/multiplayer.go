@@ -4,7 +4,9 @@ package handlers
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -470,28 +472,65 @@ func handleMessage(player *Player, msg Message) {
 }
 
 func handleStartGame(player *Player) {
+	// Must be host
 	player.mu.RLock()
 	roomCode := player.Room
+	isHost := player.IsHost
 	player.mu.RUnlock()
 
 	if roomCode == "" {
+		player.sendMessage("error", map[string]interface{}{"error": "Not in a room"})
 		return
 	}
 
+	if !isHost {
+		player.sendMessage("error", map[string]interface{}{"error": "Only host can start the game"})
+		return
+	}
+
+	// Load room
 	mu.RLock()
 	room, exists := rooms[roomCode]
 	mu.RUnlock()
 
 	if !exists {
+		player.sendMessage("error", map[string]interface{}{"error": "Room not found"})
 		return
 	}
 
-	// Ensure only the host can start the game
-	if room.Host != player.ID {
-		player.sendMessage("error", map[string]interface{}{"error": "Only host can start the game"})
+	// Require at least 2 playing players and all must be ready
+	room.mu.RLock()
+	playingCount := 0
+	readyCount := 0
+	for _, p := range room.Players {
+		p.mu.RLock()
+		if p.IsPlaying {
+			playingCount++
+			if p.IsReady {
+				readyCount++
+			}
+		}
+		p.mu.RUnlock()
+	}
+	room.mu.RUnlock()
+
+	if playingCount < 2 {
+		player.sendMessage("error", map[string]interface{}{
+			"error":   "Need at least 2 players to start",
+			"message": "Waiting for more players to join...",
+		})
 		return
 	}
 
+	if readyCount != playingCount {
+		player.sendMessage("error", map[string]interface{}{
+			"error":   "All players must be ready",
+			"message": fmt.Sprintf("%d/%d players ready", readyCount, playingCount),
+		})
+		return
+	}
+
+	log.Printf("🎮 Starting game in room %s with %d ready players", roomCode, playingCount)
 	startGame(room)
 }
 
@@ -1037,12 +1076,21 @@ func fetchQuestionsForRoom(room *Room) []map[string]interface{} {
 		return []map[string]interface{}{}
 	}
 
-	// Shuffle questions using consistent random seed based on game ID
-	source := mathrand.NewSource(time.Now().UnixNano())
-	rng := mathrand.New(source)
+	// Use deterministic seed based on GameID (fallback to room.Code if empty)
+	seedString := room.GameID
+	if seedString == "" {
+		seedString = room.Code
+	}
+	sum := sha256.Sum256([]byte(seedString))
+	seed := int64(binary.BigEndian.Uint64(sum[:8]))
+	rng := mathrand.New(mathrand.NewSource(seed))
+
+	// Shuffle questions deterministically
 	rng.Shuffle(len(questions), func(i, j int) {
 		questions[i], questions[j] = questions[j], questions[i]
 	})
+
+	log.Printf("🎲 Shuffled %d questions for game %s with deterministic seed", len(questions), seedString)
 
 	// Take only the requested number of questions
 	if len(questions) > questionCount {

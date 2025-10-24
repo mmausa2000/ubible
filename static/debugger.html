@@ -952,7 +952,11 @@
                 logMP('info', `Connecting to WebSocket as ${username}...`);
             }
 
-            ws = new WebSocket(`ws://localhost:4000/ws?player_id=${playerId}&username=${username}`);
+            // Origin-aware WebSocket URL (auto-selects ws/wss based on protocol)
+            const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+            const wsHost = location.hostname === 'localhost' ? 'localhost:4000' : location.host;
+            const wsUrl = `${proto}://${wsHost}/ws?player_id=${encodeURIComponent(playerId)}&username=${encodeURIComponent(username)}`;
+            ws = new WebSocket(wsUrl);
 
             ws.onopen = () => {
                 reconnectAttempts = 0;
@@ -1122,7 +1126,8 @@
                     logMP('success', `Joined room: ${currentRoomCode}`);
                     break;
                 case 'player_joined':
-                    logMP('info', `Player joined: ${data.payload.username}`);
+                    const joinedName = data.payload.username || data.payload.player || 'Unknown';
+                    logMP('info', `Player joined: ${joinedName}`);
                     updatePlayerCount(data.payload.player_count);
                     break;
                 case 'player_left':
@@ -1174,7 +1179,7 @@
                 return;
             }
 
-            sendWSMessage('join_room', { code });
+            sendWSMessage('join_room', { room_code: code });
         }
 
         function leaveRoom() {
