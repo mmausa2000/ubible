@@ -798,12 +798,39 @@ func handleReconnect(player *Player, payload interface{}) {
 
 	log.Printf("✅ Player %s reconnected to game %s (room %s)", player.ID, gameID, targetRoom.Code)
 
-	// Send confirmation
+	// Prepare current game state
+	targetRoom.mu.RLock()
+	currentQuestion := targetRoom.CurrentQuestion
+	questionCount := targetRoom.QuestionCount
+	roomState := targetRoom.State
+	playerScores := make(map[string]int)
+	for pid, score := range targetRoom.PlayerScores {
+		playerScores[pid] = score
+	}
+	targetRoom.mu.RUnlock()
+
+	isGameStarted := roomState == "playing"
+
+	// Send confirmation with full game state
 	player.sendMessage("reconnected", map[string]interface{}{
-		"game_id":   gameID,
-		"room_code": targetRoom.Code,
-		"success":   true,
+		"game_id":          gameID,
+		"room_code":        targetRoom.Code,
+		"success":          true,
+		"game_started":     isGameStarted,
+		"current_question": currentQuestion,
+		"question_count":   questionCount,
+		"player_scores":    playerScores,
+		"players":          getPlayerList(targetRoom),
 	})
+
+	// If game is in progress, send current question to help client sync
+	if isGameStarted && currentQuestion < questionCount {
+		log.Printf("📍 Sending current question sync: Q%d/%d", currentQuestion+1, questionCount)
+		player.sendMessage("question_sync", map[string]interface{}{
+			"question_index": currentQuestion,
+			"total":          questionCount,
+		})
+	}
 }
 
 // handleSubmitAnswer processes player answers and broadcasts to room

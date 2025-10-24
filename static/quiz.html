@@ -2217,6 +2217,25 @@
                                     break;
                                 }
 
+                                // Reconnection confirmation with game state
+                                case 'reconnected': {
+                                    console.log('[Quiz] Reconnected to game:', payload);
+                                    if (payload.game_started && payload.current_question !== undefined) {
+                                        console.log('[Quiz] Syncing to question', payload.current_question);
+                                        // Server will send question_sync next
+                                    }
+                                    break;
+                                }
+
+                                // Question sync after reconnection
+                                case 'question_sync': {
+                                    const syncIndex = Number(pick(payload.question_index, msg.question_index));
+                                    console.log('[Quiz] Syncing to question', syncIndex);
+                                    QuizState.currentQuestionIndex = syncIndex;
+                                    displayQuestion();
+                                    break;
+                                }
+
                                 case 'player_quit':
                                 case 'opponent_left':
                                     QuizState.clearTimer();
