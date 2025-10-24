@@ -952,7 +952,7 @@
                 logMP('info', `Connecting to WebSocket as ${username}...`);
             }
 
-            ws = new WebSocket(`ws://localhost:3000/ws?player_id=${playerId}&username=${username}`);
+            ws = new WebSocket(`ws://localhost:4000/ws?player_id=${playerId}&username=${username}`);
 
             ws.onopen = () => {
                 reconnectAttempts = 0;

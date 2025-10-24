@@ -274,7 +274,7 @@
         function connectWS() {
             return new Promise((resolve, reject) => {
                 const playerId = 'BrowserTest_' + Date.now();
-                const wsURL = `ws://localhost:3000/ws?player_id=${playerId}&username=BrowserTest`;
+                const wsURL = `ws://localhost:4000/ws?player_id=${playerId}&username=BrowserTest`;
 
                 info(`Connecting to ${wsURL}...`);
                 ws = new WebSocket(wsURL);

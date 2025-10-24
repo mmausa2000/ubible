@@ -3,6 +3,7 @@ package main
 
 import (
 	"log"
+	"net/http"
 	"os"
 	"time"
 	"ubible/database"
@@ -245,9 +246,21 @@ func main() {
 	adminProtected.Put("/challenges/:id", admin.UpdateChallenge)
 	adminProtected.Delete("/challenges/:id", admin.DeleteChallenge)
 
-	// WebSocket endpoint using nhooyr.io/websocket (net/http compatible)
-	// Mounted at /ws - clients connect to ws://localhost:3000/ws
-	app.Get("/ws", handlers.WebSocketHTTPHandler())
+	// Proxy /ws requests from Fiber to the WebSocket server on port 4000
+	// This allows clients to keep using ws://localhost:3000/ws
+	app.Get("/ws", func(c *fiber.Ctx) error {
+		// Redirect to WebSocket server
+		wsPort := getEnv("WS_PORT", "4000")
+		wsURL := "ws://localhost:" + wsPort + "/ws"
+
+		// For WebSocket, we need to tell the client the correct URL
+		// Since Fiber can't proxy WebSocket, inform user of correct port
+		return c.Status(fiber.StatusUpgradeRequired).JSON(fiber.Map{
+			"error":   "WebSocket endpoint moved",
+			"message": "Please connect to " + wsURL,
+			"ws_url":  wsURL,
+		})
+	})
 
 	// Debug endpoints for troubleshooting multiplayer (remove in production)
 	api.Get("/debug/rooms", handlers.GetActiveRooms)
@@ -291,21 +304,38 @@ func main() {
 		})
 	})
 
-	// Start server
+	// Start WebSocket server on port 4000 (pure net/http)
+	wsPort := getEnv("WS_PORT", "4000")
+	wsMux := http.NewServeMux()
+	wsMux.HandleFunc("/ws", handlers.WebSocketHandler)
+
+	wsServer := &http.Server{
+		Addr:    ":" + wsPort,
+		Handler: wsMux,
+	}
+
+	go func() {
+		log.Printf("🌐 WebSocket server starting on port %s", wsPort)
+		if err := wsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal("WebSocket server failed:", err)
+		}
+	}()
+
+	// Start Fiber HTTP/REST server on port 3000
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "3000"
 	}
 
-	log.Printf("🚀 Server starting on port %s", port)
+	log.Printf("🚀 HTTP server starting on port %s", port)
 	log.Printf("📊 Environment: %s", getEnv("APP_ENV", "development"))
 	log.Printf("🔐 JWT Secret configured: %v", os.Getenv("JWT_SECRET") != "")
 	log.Printf("🧹 Guest cleanup: %s", getEnv("GUEST_CLEANUP_ENABLED", "true"))
-	log.Printf("🌐 WebSocket enabled at ws://localhost:%s/ws", port)
+	log.Printf("🌐 WebSocket available at ws://localhost:%s/ws", wsPort)
 	log.Printf("✅ Quiz endpoint available at /api/questions/quiz")
 
 	if err := app.Listen(":" + port); err != nil {
-		log.Fatal("Failed to start server:", err)
+		log.Fatal("Failed to start HTTP server:", err)
 	}
 }
 

@@ -17,8 +17,6 @@ import (
 	"ubible/database"
 	"ubible/models"
 
-	"github.com/gofiber/adaptor/v2"
-	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"nhooyr.io/websocket"
@@ -96,77 +94,75 @@ var (
 	mu           sync.RWMutex
 )
 
-// WebSocketHTTPHandler returns a Fiber handler that wraps the nhooyr WebSocket handler
-func WebSocketHTTPHandler() func(*fiber.Ctx) error {
-	return func(c *fiber.Ctx) error {
-		// Authenticate using JWT from cookie or Authorization header
-		var userID *uint
-		var username string
-		var isGuest bool = true
+// WebSocketHandler is a pure net/http handler for WebSocket connections
+func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
+	// Authenticate using JWT from cookie or Authorization header
+	var userID *uint
+	var username string
+	var isGuest bool = true
 
-		// Try to get JWT token from Authorization header
-		authHeader := c.Get("Authorization")
-		var tokenString string
+	// Try to get JWT token from Authorization header
+	authHeader := r.Header.Get("Authorization")
+	var tokenString string
 
-		if authHeader != "" {
-			parts := strings.Split(authHeader, " ")
-			if len(parts) == 2 && parts[0] == "Bearer" {
-				tokenString = parts[1]
-			}
+	if authHeader != "" {
+		parts := strings.Split(authHeader, " ")
+		if len(parts) == 2 && parts[0] == "Bearer" {
+			tokenString = parts[1]
 		}
-
-		// Fall back to cookie
-		if tokenString == "" {
-			tokenString = c.Cookies("token")
-		}
-
-		// Parse JWT if present
-		if tokenString != "" {
-			jwtSecret := os.Getenv("JWT_SECRET")
-			if jwtSecret == "" {
-				jwtSecret = "ubible-secret-change-in-production"
-			}
-
-			token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-					return nil, fmt.Errorf("invalid signing method")
-				}
-				return []byte(jwtSecret), nil
-			})
-
-			if err == nil && token.Valid {
-				if claims, ok := token.Claims.(jwt.MapClaims); ok {
-					// Extract user info from JWT
-					if userIDVal, ok := claims["user_id"].(float64); ok {
-						uid := uint(userIDVal)
-						userID = &uid
-					}
-					if usernameVal, ok := claims["username"].(string); ok {
-						username = usernameVal
-					}
-					if isGuestVal, ok := claims["is_guest"].(bool); ok {
-						isGuest = isGuestVal
-					}
-				}
-			}
-		}
-
-		// Adapt Fiber context to net/http
-		return adaptor.HTTPHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			HandleWebSocket(w, r, userID, username, isGuest)
-		}))(c)
 	}
+
+	// Fall back to cookie
+	if tokenString == "" {
+		if cookie, err := r.Cookie("token"); err == nil {
+			tokenString = cookie.Value
+		}
+	}
+
+	// Parse JWT if present
+	if tokenString != "" {
+		jwtSecret := os.Getenv("JWT_SECRET")
+		if jwtSecret == "" {
+			jwtSecret = "ubible-secret-change-in-production"
+		}
+
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("invalid signing method")
+			}
+			return []byte(jwtSecret), nil
+		})
+
+		if err == nil && token.Valid {
+			if claims, ok := token.Claims.(jwt.MapClaims); ok {
+				// Extract user info from JWT
+				if userIDVal, ok := claims["user_id"].(float64); ok {
+					uid := uint(userIDVal)
+					userID = &uid
+				}
+				if usernameVal, ok := claims["username"].(string); ok {
+					username = usernameVal
+				}
+				if isGuestVal, ok := claims["is_guest"].(bool); ok {
+					isGuest = isGuestVal
+				}
+			}
+		}
+	}
+
+	// Handle WebSocket upgrade and connection
+	handleWebSocket(w, r, userID, username, isGuest)
 }
 
-// HandleWebSocket handles nhooyr.io/websocket connections (net/http compatible)
-func HandleWebSocket(w http.ResponseWriter, r *http.Request, userID *uint, username string, isGuest bool) error {
+// handleWebSocket handles nhooyr.io/websocket connections (net/http compatible)
+func handleWebSocket(w http.ResponseWriter, r *http.Request, userID *uint, username string, isGuest bool) {
 	// Accept WebSocket connection
 	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
 		InsecureSkipVerify: true, // TODO: Add proper origin checking in production
 	})
 	if err != nil {
 		log.Printf("❌ WebSocket upgrade failed: %v", err)
-		return err
+		return
 	}
 
 	ctx := r.Context()
@@ -230,8 +226,6 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request, userID *uint, usern
 
 	close(player.send)
 	log.Printf("🔌 Player disconnected: %s (ID: %s, UserID: %v)", player.Username, player.ID, player.UserID)
-
-	return nil
 }
 
 // Deprecated: HandleFiberWebSocketWithAuth - use HandleWebSocket instead
