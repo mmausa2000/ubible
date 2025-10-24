@@ -15,7 +15,6 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
-	"github.com/gofiber/websocket/v2"
 	"github.com/joho/godotenv"
 )
 
@@ -246,27 +245,9 @@ func main() {
 	adminProtected.Put("/challenges/:id", admin.UpdateChallenge)
 	adminProtected.Delete("/challenges/:id", admin.DeleteChallenge)
 
-	// WebSocket for multiplayer (using gofiber/websocket)
-	app.Use("/ws", func(c *fiber.Ctx) error {
-		// IsWebSocketUpgrade returns true if the client
-		// requested upgrade to the WebSocket protocol.
-		if websocket.IsWebSocketUpgrade(c) {
-			c.Locals("allowed", true)
-			return c.Next()
-		}
-		return fiber.ErrUpgradeRequired
-	})
-
-	app.Get("/ws", websocket.New(func(c *websocket.Conn) {
-		// Get query parameters from the initial HTTP request
-		playerID := c.Query("player_id")
-		username := c.Query("username")
-
-		log.Printf("WebSocket connected: %s (%s)", username, playerID)
-
-		// Handle the WebSocket connection
-		handlers.HandleFiberWebSocket(c, playerID, username)
-	}))
+	// WebSocket endpoint using nhooyr.io/websocket (net/http compatible)
+	// Mounted at /ws - clients connect to ws://localhost:3000/ws
+	app.Get("/ws", handlers.WebSocketHTTPHandler())
 
 	// Debug endpoints for troubleshooting multiplayer (remove in production)
 	api.Get("/debug/rooms", handlers.GetActiveRooms)

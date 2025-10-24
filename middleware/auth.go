@@ -145,6 +145,83 @@ func IsGuest(c *fiber.Ctx) bool {
 	return false
 }
 
+// WebSocketAuthMiddleware validates JWT for WebSocket connections
+// Supports both Authorization header and cookies for flexibility
+func WebSocketAuthMiddleware(c *fiber.Ctx) error {
+	var tokenString string
+
+	// Try Authorization header first (Bearer token)
+	authHeader := c.Get("Authorization")
+	if authHeader != "" {
+		parts := strings.Split(authHeader, " ")
+		if len(parts) == 2 && parts[0] == "Bearer" {
+			tokenString = parts[1]
+		}
+	}
+
+	// Fall back to cookie if no header
+	if tokenString == "" {
+		tokenString = c.Cookies("token")
+	}
+
+	// If no token found, allow connection but mark as guest
+	if tokenString == "" {
+		c.Locals("userId", nil)
+		c.Locals("username", "Guest")
+		c.Locals("isGuest", true)
+		return c.Next()
+	}
+
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "ubible-secret-change-in-production"
+	}
+
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fiber.NewError(401, "Invalid signing method")
+		}
+		return []byte(jwtSecret), nil
+	})
+
+	if err != nil || !token.Valid {
+		// Invalid token - treat as guest
+		c.Locals("userId", nil)
+		c.Locals("username", "Guest")
+		c.Locals("isGuest", true)
+		return c.Next()
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		// Invalid claims - treat as guest
+		c.Locals("userId", nil)
+		c.Locals("username", "Guest")
+		c.Locals("isGuest", true)
+		return c.Next()
+	}
+
+	// Check expiration
+	exp, ok := claims["exp"].(float64)
+	if !ok || time.Unix(int64(exp), 0).Before(time.Now()) {
+		// Expired token - treat as guest
+		c.Locals("userId", nil)
+		c.Locals("username", "Guest")
+		c.Locals("isGuest", true)
+		return c.Next()
+	}
+
+	// Valid token - extract user info
+	c.Locals("userId", claims["user_id"])
+	c.Locals("username", claims["username"])
+	c.Locals("isGuest", claims["is_guest"])
+
+	// Update user's last activity
+	updateUserActivity(claims["user_id"])
+
+	return c.Next()
+}
+
 // updateUserActivity updates the user's last activity timestamp
 func updateUserActivity(userID interface{}) {
 	if userID == nil {

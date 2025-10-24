@@ -6,15 +6,23 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"log"
 	mathrand "math/rand"
+	"net/http"
+	"os"
+	"strings"
 	"sync"
 	"time"
 	"ubible/database"
 	"ubible/models"
 
-	"github.com/gofiber/websocket/v2"
+	"github.com/gofiber/adaptor/v2"
+	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"nhooyr.io/websocket"
+	"nhooyr.io/websocket/wsjson"
 )
 
 const (
@@ -27,8 +35,10 @@ const (
 )
 
 type Player struct {
-	ID        string
+	ID        string          // UUID for in-game identity
+	UserID    *uint           // Database user ID (nil for guests)
 	Username  string
+	IsGuest   bool            // True for unauthenticated players
 	Conn      *websocket.Conn
 	Room      string
 	IsReady   bool
@@ -54,9 +64,11 @@ type Room struct {
 	GameToken      string `json:"game_token"` // Secure access token
 
 	// Per-question state tracking
-	CurrentQuestion int             `json:"current_question"` // 0-indexed
-	PlayersAnswered map[string]bool `json:"players_answered"` // playerID → has answered current Q
-	PlayerScores    map[string]int  `json:"player_scores"`    // playerID → current score
+	CurrentQuestion   int             `json:"current_question"` // 0-indexed
+	QuestionStartTime time.Time       `json:"-"`                // When current question started (for timeout)
+	QuestionTimer     *time.Timer     `json:"-"`                // Timer for current question
+	PlayersAnswered   map[string]bool `json:"players_answered"` // playerID → has answered current Q
+	PlayerScores      map[string]int  `json:"player_scores"`    // playerID → current score
 
 	mu sync.RWMutex
 }
@@ -84,24 +96,106 @@ var (
 	mu           sync.RWMutex
 )
 
-// HandleFiberWebSocket handles WebSocket connections using Fiber's WebSocket
-func HandleFiberWebSocket(conn *websocket.Conn, playerID, username string) {
-	if playerID == "" {
-		playerID = generateID()
+// WebSocketHTTPHandler returns a Fiber handler that wraps the nhooyr WebSocket handler
+func WebSocketHTTPHandler() func(*fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
+		// Authenticate using JWT from cookie or Authorization header
+		var userID *uint
+		var username string
+		var isGuest bool = true
+
+		// Try to get JWT token from Authorization header
+		authHeader := c.Get("Authorization")
+		var tokenString string
+
+		if authHeader != "" {
+			parts := strings.Split(authHeader, " ")
+			if len(parts) == 2 && parts[0] == "Bearer" {
+				tokenString = parts[1]
+			}
+		}
+
+		// Fall back to cookie
+		if tokenString == "" {
+			tokenString = c.Cookies("token")
+		}
+
+		// Parse JWT if present
+		if tokenString != "" {
+			jwtSecret := os.Getenv("JWT_SECRET")
+			if jwtSecret == "" {
+				jwtSecret = "ubible-secret-change-in-production"
+			}
+
+			token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, fmt.Errorf("invalid signing method")
+				}
+				return []byte(jwtSecret), nil
+			})
+
+			if err == nil && token.Valid {
+				if claims, ok := token.Claims.(jwt.MapClaims); ok {
+					// Extract user info from JWT
+					if userIDVal, ok := claims["user_id"].(float64); ok {
+						uid := uint(userIDVal)
+						userID = &uid
+					}
+					if usernameVal, ok := claims["username"].(string); ok {
+						username = usernameVal
+					}
+					if isGuestVal, ok := claims["is_guest"].(bool); ok {
+						isGuest = isGuestVal
+					}
+				}
+			}
+		}
+
+		// Adapt Fiber context to net/http
+		return adaptor.HTTPHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			HandleWebSocket(w, r, userID, username, isGuest)
+		}))(c)
 	}
-	if username == "" {
-		username = "Player" + playerID[:6]
+}
+
+// HandleWebSocket handles nhooyr.io/websocket connections (net/http compatible)
+func HandleWebSocket(w http.ResponseWriter, r *http.Request, userID *uint, username string, isGuest bool) error {
+	// Accept WebSocket connection
+	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
+		InsecureSkipVerify: true, // TODO: Add proper origin checking in production
+	})
+	if err != nil {
+		log.Printf("❌ WebSocket upgrade failed: %v", err)
+		return err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx := r.Context()
+
+	// Generate player ID
+	playerID := r.URL.Query().Get("player_id")
+	if playerID == "" {
+		playerID = GeneratePlayerID()
+	}
+
+	// Use authenticated username, fall back to query param for guests
+	if username == "" {
+		username = r.URL.Query().Get("username")
+		if username == "" {
+			username = "Guest" + playerID[:6]
+		}
+	}
+
+	playerCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	player := &Player{
 		ID:       playerID,
+		UserID:   userID,
 		Username: username,
+		IsGuest:  isGuest,
 		Conn:     conn,
 		send:     make(chan Message, sendBufferSize),
-		ctx:      ctx,
+		ctx:      playerCtx,
 		cancel:   cancel,
 	}
 
@@ -109,17 +203,21 @@ func HandleFiberWebSocket(conn *websocket.Conn, playerID, username string) {
 	players[conn] = player
 	mu.Unlock()
 
+	log.Printf("🎮 Player connected: %s (ID: %s, UserID: %v, Guest: %v)", username, playerID, userID, isGuest)
+
 	// Send initial connection message
-	player.sendFiberMessage("connected", map[string]interface{}{
+	player.sendMessage("connected", map[string]interface{}{
 		"player_id": playerID,
 		"username":  username,
+		"is_guest":  isGuest,
+		"user_id":   userID,
 	})
 
 	// Start write pump in separate goroutine
-	go player.writeFiberPump()
+	go player.writePump()
 
 	// Start read pump (blocking)
-	player.readFiberPump()
+	player.readPump()
 
 	// Cleanup when connection closes
 	mu.Lock()
@@ -131,7 +229,75 @@ func HandleFiberWebSocket(conn *websocket.Conn, playerID, username string) {
 	}
 
 	close(player.send)
-	log.Printf("Player disconnected: %s (%s)", player.Username, player.ID)
+	log.Printf("🔌 Player disconnected: %s (ID: %s, UserID: %v)", player.Username, player.ID, player.UserID)
+
+	return nil
+}
+
+// Deprecated: HandleFiberWebSocketWithAuth - use HandleWebSocket instead
+func HandleFiberWebSocketWithAuth(conn *websocket.Conn, playerID, username string, userID *uint, isGuest bool) {
+	if playerID == "" {
+		playerID = generateID()
+	}
+	if username == "" {
+		if userID != nil {
+			username = "User" + string(rune(*userID))
+		} else {
+			username = "Guest" + playerID[:6]
+		}
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	player := &Player{
+		ID:       playerID,
+		UserID:   userID,
+		Username: username,
+		IsGuest:  isGuest,
+		Conn:     conn,
+		send:     make(chan Message, sendBufferSize),
+		ctx:      ctx,
+		cancel:   cancel,
+	}
+
+	mu.Lock()
+	players[conn] = player
+	mu.Unlock()
+
+	log.Printf("🎮 Player connected: %s (ID: %s, UserID: %v, Guest: %v)", username, playerID, userID, isGuest)
+
+	// Send initial connection message
+	player.sendMessage("connected", map[string]interface{}{
+		"player_id": playerID,
+		"username":  username,
+		"is_guest":  isGuest,
+		"user_id":   userID,
+	})
+
+	// Start write pump in separate goroutine
+	go player.writePump()
+
+	// Start read pump (blocking)
+	player.readPump()
+
+	// Cleanup when connection closes
+	mu.Lock()
+	delete(players, conn)
+	mu.Unlock()
+
+	if player.Room != "" {
+		handleLeaveRoom(player)
+	}
+
+	close(player.send)
+	log.Printf("🔌 Player disconnected: %s (ID: %s, UserID: %v)", player.Username, player.ID, player.UserID)
+}
+
+// HandleFiberWebSocket handles WebSocket connections using Fiber's WebSocket (backward compatibility)
+// Deprecated: Use HandleFiberWebSocketWithAuth for authenticated connections
+func HandleFiberWebSocket(conn *websocket.Conn, playerID, username string) {
+	HandleFiberWebSocketWithAuth(conn, playerID, username, nil, true)
 }
 
 // OLD NHOOYR-BASED HANDLERS - COMMENTED OUT (Using Fiber WebSocket now)
@@ -267,9 +433,17 @@ func (p *Player) sendMessage(msgType string, payload interface{}) {
 }
 */
 
-// sendMessage is a wrapper that uses the Fiber implementation
+// sendMessage queues a message to be sent to the player via WebSocket
 func (p *Player) sendMessage(msgType string, payload interface{}) {
-	p.sendFiberMessage(msgType, payload)
+	msg := Message{Type: msgType, Payload: payload}
+
+	select {
+	case p.send <- msg:
+		// Message queued successfully
+	default:
+		// Send buffer full - drop message and log warning
+		log.Printf("⚠️ Send buffer full for player %s, dropping message type: %s", p.ID, msgType)
+	}
 }
 
 func handleMessage(player *Player, msg Message) {
@@ -288,6 +462,8 @@ func handleMessage(player *Player, msg Message) {
 		handleStartGame(player)
 	case "reconnect":
 		handleReconnect(player, msg.Payload)
+	case "player_quit":
+		handlePlayerQuit(player, msg.Payload)
 	case "submit_answer":
 		handleSubmitAnswer(player, msg.Payload)
 	case "opponent_answered":
@@ -627,10 +803,10 @@ func handleSubmitAnswer(player *Player, payload interface{}) {
 		return
 	}
 
-	// Parse answer data
+	// Parse answer data - accept both snake_case and camelCase
 	data := parsePayload(payload)
-	questionIndex := getInt(data, "questionIndex", -1)
-	isCorrect := getBool(data, "correct", false)
+	questionIndex := getInt(data, "questionIndex", getInt(data, "question_index", -1))
+	isCorrect := getBool(data, "correct", getBool(data, "is_correct", false))
 	score := getInt(data, "score", 0)
 
 	room.mu.Lock()
@@ -708,24 +884,7 @@ func handleSubmitAnswer(player *Player, payload interface{}) {
 
 		if gameComplete {
 			log.Printf("🏁 Game complete in room %s", roomCode)
-
-			// Broadcast game over with final scores
-			room.mu.RLock()
-			finalScores := make([]map[string]interface{}, 0)
-			for pid, score := range room.PlayerScores {
-				if p, exists := room.Players[pid]; exists {
-					finalScores = append(finalScores, map[string]interface{}{
-						"player_id": pid,
-						"username":  p.Username,
-						"score":     score,
-					})
-				}
-			}
-			room.mu.RUnlock()
-
-			broadcastToRoom(room, "game_complete", map[string]interface{}{
-				"final_scores": finalScores,
-			})
+			handleGameComplete(room)
 		} else {
 			log.Printf("➡️  Room %s advancing to Q%d/%d", roomCode, nextQuestion+1, totalQuestions)
 
@@ -734,6 +893,9 @@ func handleSubmitAnswer(player *Player, payload interface{}) {
 				"question_index": nextQuestion,
 				"total":          totalQuestions,
 			})
+
+			// Start timer for next question
+			startQuestionTimer(room)
 		}
 	}
 }
@@ -783,6 +945,73 @@ func handleLeaveRoom(player *Player) {
 	} else {
 		broadcastRoomUpdate(room)
 	}
+}
+
+// handlePlayerQuit handles when a player quits mid-game
+func handlePlayerQuit(player *Player, _ interface{}) {
+	player.mu.RLock()
+	roomCode := player.Room
+	player.mu.RUnlock()
+
+	if roomCode == "" {
+		log.Printf("⚠️  Player %s tried to quit but not in a room", player.ID)
+		return
+	}
+
+	mu.RLock()
+	room, exists := rooms[roomCode]
+	mu.RUnlock()
+
+	if !exists {
+		log.Printf("⚠️  Player %s tried to quit but room %s doesn't exist", player.ID, roomCode)
+		return
+	}
+
+	log.Printf("🚪 Player %s (%s) quit from room %s", player.ID, player.Username, roomCode)
+
+	// Mark player as not playing (but keep in room for stats)
+	player.mu.Lock()
+	player.IsPlaying = false
+	player.mu.Unlock()
+
+	// Broadcast to other players
+	broadcastToRoom(room, "player_quit", map[string]interface{}{
+		"player_id": player.ID,
+		"username":  player.Username,
+	})
+
+	// Also send opponent_left for backward compatibility
+	broadcastToRoom(room, "opponent_left", map[string]interface{}{
+		"player_id": player.ID,
+		"username":  player.Username,
+	})
+
+	// Check if game should continue
+	room.mu.RLock()
+	playingCount := 0
+	for _, p := range room.Players {
+		p.mu.RLock()
+		if p.IsPlaying {
+			playingCount++
+		}
+		p.mu.RUnlock()
+	}
+	room.mu.RUnlock()
+
+	switch playingCount {
+	case 0:
+		// No players left playing, end the game
+		log.Printf("🏁 Game in room %s ended - all players quit", roomCode)
+		mu.Lock()
+		delete(rooms, roomCode)
+		mu.Unlock()
+	case 1:
+		// Only one player left, they can continue solo
+		log.Printf("🎯 Game in room %s continues with 1 player", roomCode)
+	}
+
+	// Player stays connected but leaves the room
+	handleLeaveRoom(player)
 }
 
 // fetchQuestionsForRoom retrieves questions from database for multiplayer game
@@ -871,6 +1100,275 @@ func fetchQuestionsForRoom(room *Room) []map[string]interface{} {
 	return result
 }
 
+// startQuestionTimer starts a timer for the current question
+func startQuestionTimer(room *Room) {
+	room.mu.Lock()
+
+	// Stop any existing timer
+	if room.QuestionTimer != nil {
+		room.QuestionTimer.Stop()
+	}
+
+	timeLimit := room.TimeLimit
+	if timeLimit == 0 {
+		timeLimit = 10 // default 10 seconds
+	}
+
+	room.QuestionStartTime = time.Now()
+	currentQuestion := room.CurrentQuestion
+	room.mu.Unlock()
+
+	// Create timer for question timeout
+	room.mu.Lock()
+	room.QuestionTimer = time.AfterFunc(time.Duration(timeLimit)*time.Second, func() {
+		handleQuestionTimeout(room, currentQuestion)
+	})
+	room.mu.Unlock()
+
+	log.Printf("⏱️  Started timer for Q%d in room %s (%ds)", currentQuestion+1, room.Code, timeLimit)
+}
+
+// handleQuestionTimeout handles when time runs out for a question
+func handleQuestionTimeout(room *Room, expectedQuestion int) {
+	room.mu.Lock()
+
+	// Verify we're still on the same question (prevent race conditions)
+	if room.CurrentQuestion != expectedQuestion {
+		room.mu.Unlock()
+		return
+	}
+
+	log.Printf("⏰ Question %d timed out in room %s", expectedQuestion+1, room.Code)
+
+	// Count how many players haven't answered
+	unansweredCount := 0
+	playingCount := 0
+	for _, p := range room.Players {
+		p.mu.RLock()
+		if p.IsPlaying {
+			playingCount++
+			if !room.PlayersAnswered[p.ID] {
+				unansweredCount++
+			}
+		}
+		p.mu.RUnlock()
+	}
+
+	log.Printf("⏰ Timeout: %d/%d players didn't answer", unansweredCount, playingCount)
+
+	// Clear PlayersAnswered for next question
+	room.PlayersAnswered = make(map[string]bool)
+
+	// Check if there are more questions
+	questionsRemaining := room.QuestionCount - (room.CurrentQuestion + 1)
+
+	if questionsRemaining > 0 {
+		// Advance to next question
+		room.CurrentQuestion++
+		nextQuestion := room.CurrentQuestion
+		totalQuestions := room.QuestionCount
+		room.mu.Unlock()
+
+		log.Printf("➡️  Room %s auto-advancing to Q%d/%d (timeout)", room.Code, nextQuestion+1, totalQuestions)
+
+		// Broadcast next question
+		broadcastToRoom(room, "next_question", map[string]interface{}{
+			"question_index": nextQuestion,
+			"total":          totalQuestions,
+			"reason":         "timeout",
+		})
+
+		// Start timer for next question
+		startQuestionTimer(room)
+	} else {
+		// Game complete
+		room.mu.Unlock()
+		log.Printf("🏁 Game complete in room %s (timeout on last question)", room.Code)
+		handleGameComplete(room)
+	}
+}
+
+// handleGameComplete handles end-of-game logic and persists results
+func handleGameComplete(room *Room) {
+	room.mu.Lock()
+
+	// Stop timer if running
+	if room.QuestionTimer != nil {
+		room.QuestionTimer.Stop()
+		room.QuestionTimer = nil
+	}
+
+	// Collect final scores and determine winner
+	finalScores := make([]map[string]interface{}, 0)
+	maxScore := 0
+	winnerID := ""
+
+	for pid, score := range room.PlayerScores {
+		if p, exists := room.Players[pid]; exists {
+			finalScores = append(finalScores, map[string]interface{}{
+				"player_id": pid,
+				"username":  p.Username,
+				"score":     score,
+			})
+
+			if score > maxScore {
+				maxScore = score
+				winnerID = pid
+			}
+		}
+	}
+
+	roomCode := room.Code
+	questionCount := room.QuestionCount
+	timeLimit := room.TimeLimit
+	room.mu.Unlock()
+
+	log.Printf("🏁 Game complete in room %s - Final scores: %+v, Winner: %s", roomCode, finalScores, winnerID)
+
+	// Broadcast game complete
+	broadcastToRoom(room, "game_complete", map[string]interface{}{
+		"final_scores": finalScores,
+		"winner_id":    winnerID,
+	})
+
+	// Persist game results to database (async)
+	go func() {
+		db := database.GetDB()
+		if db == nil {
+			log.Printf("⚠️  Cannot persist game results - database not available")
+			return
+		}
+
+		// Process results for each player
+		for pid, score := range room.PlayerScores {
+			room.mu.RLock()
+			p, exists := room.Players[pid]
+			room.mu.RUnlock()
+
+			if !exists {
+				continue
+			}
+
+			// Skip guests - they don't have persistent accounts
+			if p.IsGuest || p.UserID == nil {
+				log.Printf("⏭️  Skipping result persistence for guest player %s (%s)", pid, p.Username)
+				continue
+			}
+
+			userID := *p.UserID
+			won := pid == winnerID
+			isPerfect := score == (questionCount * 100) // Assuming 100 points per question
+			correctAnswers := score / 100               // Rough estimate based on 100 points per correct answer
+
+			// Calculate XP and FP
+			xp := score / 10
+			faithPoints := score / 20
+			if won {
+				xp += 50 // Bonus for winning
+				faithPoints += 25
+			}
+			if isPerfect {
+				xp += 100 // Bonus for perfect game
+				faithPoints += 50
+			}
+
+			// Start transaction for atomicity
+			tx := db.Begin()
+
+			// Create attempt record
+			attempt := models.Attempt{
+				UserID:         userID,
+				ThemeID:        0, // Multiplayer games may use multiple themes
+				Score:          score,
+				CorrectAnswers: correctAnswers,
+				TotalQuestions: questionCount,
+				TimeElapsed:    questionCount * timeLimit,
+				IsPerfect:      isPerfect,
+				Difficulty:     "multiplayer",
+				XPEarned:       xp,
+				FPEarned:       faithPoints,
+			}
+
+			if err := tx.Create(&attempt).Error; err != nil {
+				tx.Rollback()
+				log.Printf("⚠️  Failed to persist game result for player %s (%s): %v", pid, p.Username, err)
+				continue
+			}
+
+			// Update user progression (wins, losses, XP, FP, rating)
+			var user models.User
+			if err := tx.First(&user, userID).Error; err != nil {
+				tx.Rollback()
+				log.Printf("⚠️  Failed to load user %d for progression update: %v", userID, err)
+				continue
+			}
+
+			oldLevel := user.Level
+			user.TotalGames++
+
+			if won {
+				user.Wins++
+				user.CurrentStreak++
+				if user.CurrentStreak > user.BestStreak {
+					user.BestStreak = user.CurrentStreak
+				}
+			} else {
+				user.Losses++
+				user.CurrentStreak = 0
+			}
+
+			if isPerfect {
+				user.PerfectGames++
+			}
+
+			user.XP += xp
+			user.FaithPoints += faithPoints
+
+			// Simple rating adjustment (ELO-like)
+			if won {
+				user.Rating += 0.1
+			} else {
+				user.Rating -= 0.05
+			}
+
+			// Keep rating in bounds
+			if user.Rating > 10.0 {
+				user.Rating = 10.0
+			} else if user.Rating < 0.0 {
+				user.Rating = 0.0
+			}
+
+			// Handle level ups
+			for {
+				xpNeeded := (user.Level * user.Level * 100) // Simple level formula
+				if user.XP >= xpNeeded && user.Level < 100 {
+					user.Level++
+					user.XP -= xpNeeded
+					levelReward := 50 + (user.Level * 10)
+					user.FaithPoints += levelReward
+					log.Printf("🎉 Player %s leveled up to %d!", p.Username, user.Level)
+				} else {
+					break
+				}
+			}
+
+			if err := tx.Save(&user).Error; err != nil {
+				tx.Rollback()
+				log.Printf("⚠️  Failed to update user progression for %s: %v", p.Username, err)
+				continue
+			}
+
+			if err := tx.Commit().Error; err != nil {
+				log.Printf("⚠️  Failed to commit game results for %s: %v", p.Username, err)
+				continue
+			}
+
+			log.Printf("✅ Persisted game for %s (UserID: %d) - Score: %d, Won: %v, XP: +%d, FP: +%d, Level: %d→%d",
+				p.Username, userID, score, won, xp, faithPoints, oldLevel, user.Level)
+		}
+	}()
+}
+
 func startGame(room *Room) {
 	room.mu.RLock()
 	defer room.mu.RUnlock()
@@ -912,6 +1410,9 @@ func startGame(room *Room) {
 			"questions":  questions, // ✅ Include synchronized questions
 		})
 	}
+
+	// Start timer for first question
+	startQuestionTimer(room)
 }
 
 // broadcastToRoom sends a message to all players in a room (non-blocking)
@@ -974,8 +1475,14 @@ func generateRoomCode() string {
 	return string(b)
 }
 
-func generateID() string {
+// GeneratePlayerID creates a unique player ID
+func GeneratePlayerID() string {
 	return uuid.NewString()
+}
+
+// Deprecated: Use GeneratePlayerID instead
+func generateID() string {
+	return GeneratePlayerID()
 }
 
 func parsePayload(payload interface{}) map[string]interface{} {
@@ -1070,69 +1577,64 @@ func GetGameSession(gameID string) (*GameSession, bool) {
 }
 
 // Fiber WebSocket-specific methods
-func (p *Player) readFiberPump() {
+func (p *Player) readPump() {
 	defer func() {
 		p.cancel()
-		p.Conn.Close()
+		p.Conn.Close(websocket.StatusNormalClosure, "")
 	}()
 
 	for {
 		var msg Message
-		err := p.Conn.ReadJSON(&msg)
+		err := wsjson.Read(p.ctx, p.Conn, &msg)
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("WebSocket error: %v", err)
+			if websocket.CloseStatus(err) != websocket.StatusNormalClosure {
+				log.Printf("WebSocket read error: %v", err)
 			}
 			break
 		}
 
-		log.Printf("Received message: %s from %s", msg.Type, p.Username)
+		log.Printf("📨 Received message: %s from %s", msg.Type, p.Username)
 		handleMessage(p, msg)
 	}
 }
 
-func (p *Player) writeFiberPump() {
+func (p *Player) writePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
-		p.Conn.Close()
+		p.Conn.Close(websocket.StatusNormalClosure, "")
 	}()
 
 	for {
 		select {
 		case msg, ok := <-p.send:
 			if !ok {
-				p.Conn.WriteMessage(websocket.CloseMessage, []byte{})
+				p.Conn.Close(websocket.StatusNormalClosure, "channel closed")
 				return
 			}
 
-			p.Conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if err := p.Conn.WriteJSON(msg); err != nil {
-				log.Printf("Error writing to WebSocket: %v", err)
+			writeCtx, cancel := context.WithTimeout(p.ctx, writeWait)
+			err := wsjson.Write(writeCtx, p.Conn, msg)
+			cancel()
+
+			if err != nil {
+				log.Printf("❌ Error writing to WebSocket: %v", err)
 				return
 			}
 
 		case <-ticker.C:
-			p.Conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if err := p.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+			// Send ping
+			pingCtx, cancel := context.WithTimeout(p.ctx, writeWait)
+			err := p.Conn.Ping(pingCtx)
+			cancel()
+
+			if err != nil {
+				log.Printf("❌ Ping failed: %v", err)
 				return
 			}
 
 		case <-p.ctx.Done():
 			return
 		}
-	}
-}
-
-func (p *Player) sendFiberMessage(msgType string, payload interface{}) {
-	message := Message{
-		Type:    msgType,
-		Payload: payload,
-	}
-
-	select {
-	case p.send <- message:
-	default:
-		log.Printf("Warning: Send buffer full for player %s", p.ID)
 	}
 }
