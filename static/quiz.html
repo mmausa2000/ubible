@@ -2174,7 +2174,7 @@
                                     break;
                                 }
 
-                                // Answer submission - triggers question advancement
+                                // Answer submission - update scores only
                                 case 'answer_submitted':
                                 case 'opponent_answered': {
                                     // Update score if provided
@@ -2189,16 +2189,31 @@
                                         );
                                     }
 
-                                    // NOW set opponent answered and check for advancement
+                                    // Mark opponent as answered but don't advance
                                     MultiplayerState.opponentAnswered = true;
-                                    if (MultiplayerState.bothAnswered()) {
-                                        QuizState.clearTimer();
-                                        setTimeout(() => {
-                                            MultiplayerState.reset();
-                                            QuizState.currentQuestionIndex++;
-                                            displayQuestion();
-                                        }, 1000);
-                                    }
+                                    console.log('[Quiz] Opponent answered, waiting for server next_question event');
+                                    break;
+                                }
+
+                                // Server-driven question advancement (supports N players)
+                                case 'next_question': {
+                                    const nextIndex = Number(pick(payload.question_index, msg.question_index));
+                                    console.log('[Quiz] Server advancing to question', nextIndex);
+
+                                    QuizState.clearTimer();
+                                    setTimeout(() => {
+                                        MultiplayerState.reset();
+                                        QuizState.currentQuestionIndex = nextIndex;
+                                        displayQuestion();
+                                    }, 1000);
+                                    break;
+                                }
+
+                                // Game completion
+                                case 'game_complete': {
+                                    console.log('[Quiz] Game complete event received from server');
+                                    QuizState.clearTimer();
+                                    // Let the quiz complete naturally
                                     break;
                                 }
 
