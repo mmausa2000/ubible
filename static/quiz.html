@@ -1769,7 +1769,7 @@
                     const game = JSON.parse(localStorage.getItem('multiplayerGame') || '{}');
                     const roomCode = MultiplayerState.roomCode || game.room_code || game.roomCode || null;
 
-                    // Modern API: submit_answer (payload-wrapped, snake_case)
+                    // Send single submit_answer event - server handles all logic
                     MultiplayerState.ws.send(JSON.stringify({
                         type: 'submit_answer',
                         payload: {
@@ -1781,26 +1781,11 @@
                         }
                     }));
 
-                    // Legacy nudges for older backends
-                    MultiplayerState.ws.send(JSON.stringify({
-                        type: 'opponent_answered',
-                        payload: { room_code: roomCode }
-                    }));
-                    MultiplayerState.ws.send(JSON.stringify({
-                        type: 'opponent_answered',
-                        roomCode: roomCode
-                    }));
-
                     MultiplayerState.sendScoreUpdate();
                 }
 
-                if (MultiplayerState.bothAnswered()) {
-                    setTimeout(() => {
-                        MultiplayerState.reset();
-                        QuizState.currentQuestionIndex++;
-                        displayQuestion();
-                    }, 1000);
-                }
+                // Wait for server next_question event - no client-side advancement
+                console.log('[Quiz] Answer submitted, waiting for server next_question event');
             } else {
                 setTimeout(() => {
                     QuizState.currentQuestionIndex++;
@@ -2125,8 +2110,9 @@
                     const playerId = localStorage.getItem('playerId');
                     const username = localStorage.getItem('playerName') || 'Player';
 
-                    // ✅ connect with identity so the backend knows which player this is
-                    const wsUrl = `${protocol}//${window.location.host}/ws?player_id=${playerId}&username=${encodeURIComponent(username)}`;
+                    // ✅ Origin-aware WebSocket URL (port 4000 for localhost dev, same host for production)
+                    const wsHost = window.location.hostname === 'localhost' ? 'localhost:4000' : window.location.host;
+                    const wsUrl = `${protocol}//${wsHost}/ws?player_id=${playerId}&username=${encodeURIComponent(username)}`;
                     MultiplayerState.ws = new WebSocket(wsUrl);
 
                     MultiplayerState.ws.onopen = () => {
