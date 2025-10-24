@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Multiplayer Flow Test</title>
+</head>
+<body>
+    <h1>Testing Multiplayer → Quiz.html Flow</h1>
+    <div id="log" style="font-family: monospace; white-space: pre-wrap;"></div>
+
+    <script>
+        function log(msg) {
+            document.getElementById('log').innerHTML += msg + '\n';
+            console.log(msg);
+        }
+
+        // Simulate what game_start handler does
+        log('🧪 Simulating game_start handler...\n');
+
+        const payload = {
+            game_id: 'test-game-123',
+            players: [{id: '1', username: 'Player1'}, {id: '2', username: 'Player2'}],
+            room_code: 'ABC123'
+        };
+
+        log('📨 Received game_start payload:');
+        log(JSON.stringify(payload, null, 2));
+        log('');
+
+        // This is what index.html does
+        const gameData = {
+            gameId: payload.game_id || payload.gameId || 'multiplayer-session',
+            game_id: payload.game_id || payload.gameId,
+            questions: payload.questions || [],
+            players: payload.players || [],
+            isMultiplayer: true,
+            room_code: payload.room_code || 'ABC123',
+            roomCode: payload.room_code || 'ABC123'
+        };
+
+        log('💾 Saving to localStorage:');
+        log(JSON.stringify(gameData, null, 2));
+        log('');
+
+        localStorage.setItem('multiplayerGame', JSON.stringify(gameData));
+
+        // Verify
+        const saved = localStorage.getItem('multiplayerGame');
+        log('✅ Verified saved data:');
+        log(saved);
+        log('');
+
+        // Now test quiz.html validation
+        log('🔍 Testing quiz.html validation...\n');
+
+        const multiplayerGame = localStorage.getItem('multiplayerGame');
+        let isValidEntry = false;
+
+        if (multiplayerGame) {
+            try {
+                const game = JSON.parse(multiplayerGame);
+                log('🔍 Checking multiplayer game data:');
+                log(JSON.stringify(game, null, 2));
+                log('');
+
+                // This is the NEW validation logic
+                if (game.isMultiplayer) {
+                    isValidEntry = true;
+                    const gameId = game.gameId || game.game_id || 'multiplayer-session';
+                    log('✅ Valid entry: Multiplayer game ' + gameId);
+                } else {
+                    log('❌ Missing isMultiplayer flag');
+                }
+            } catch (e) {
+                log('❌ Invalid multiplayer game data: ' + e);
+            }
+        } else {
+            log('❌ No multiplayerGame in localStorage');
+        }
+
+        log('');
+        log('Final result: isValidEntry = ' + isValidEntry);
+        log('');
+
+        if (isValidEntry) {
+            log('✅ ✅ ✅ SUCCESS! Player would NOT be redirected!');
+        } else {
+            log('❌ ❌ ❌ FAIL! Player would be redirected to homepage!');
+        }
+    </script>
+</body>
+</html>

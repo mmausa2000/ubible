@@ -64,7 +64,7 @@ func createCoreIndexes() {
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_attempts_created ON attempts(created_at DESC)")
 
 	// Achievement indexes
-	db.Exec("CREATE INDEX IF NOT EXISTS idx_achievements_type ON achievements(type)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_achievements_category ON achievements(category)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_user_achievements_user ON user_achievements(user_id)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_user_achievements_achievement ON user_achievements(achievement_id)")
 

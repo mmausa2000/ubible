@@ -1,0 +1,17 @@
+{
+  "theme": "Creation",
+  "questions": [
+    {
+      "text": "In the beginning, God created the heavens and the earth. What was the earth initially described as?",
+      "options": [
+        "Formless and empty",
+        "Beautiful and ordered",
+        "Filled with life",
+        "Covered in light"
+      ],
+      "correct_answer": "Formless and empty",
+      "difficulty": "easy",
+      "reference": "Genesis 1:1-2"
+    }
+  ]
+}

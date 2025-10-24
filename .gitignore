@@ -10,12 +10,15 @@ bible-quiz-pro
 .env.local
 .env.*.local
 
-# Database
+# Database (legacy SQLite files - no longer used)
 *.db
 *.db-shm
 *.db-wal
 data/*.db
 data/*.db-journal
+# PostgreSQL dumps
+*.sql
+*.dump
 
 # Backups
 *.backup

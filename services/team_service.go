@@ -2,11 +2,11 @@
 package services
 
 import (
-	"ubible/models"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"time"
+	"ubible/models"
 
 	"gorm.io/gorm"
 )
@@ -48,12 +48,12 @@ func (s *TeamService) CreateTeam(name, description string, isPublic bool, creato
 
 		// Add creator as team owner
 		member := &models.TeamMember{
-			TeamID:       team.ID,
-			UserID:       creatorID,
-			Role:         models.TeamRoleOwner,
-			JoinedAt:     time.Now(),
-			IsActive:     true,
-			TotalScore:   0,
+			TeamID:        team.ID,
+			UserID:        creatorID,
+			Role:          models.TeamRoleOwner,
+			JoinedAt:      time.Now(),
+			IsActive:      true,
+			TotalScore:    0,
 			QuizzesPlayed: 0,
 		}
 
@@ -74,11 +74,11 @@ func (s *TeamService) GetTeamByID(teamID uint) (*models.Team, error) {
 		Preload("Members").
 		Preload("Members.User").
 		First(&team).Error
-	
+
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &team, nil
 }
 
@@ -88,24 +88,24 @@ func (s *TeamService) GetTeamByCode(code string) (*models.Team, error) {
 	err := s.db.Where("team_code = ? AND is_active = ?", code, true).
 		Preload("Members").
 		First(&team).Error
-	
+
 	if err != nil {
 		return nil, errors.New("team not found or inactive")
 	}
-	
+
 	return &team, nil
 }
 
 // GetUserTeams retrieves all teams a user is a member of
 func (s *TeamService) GetUserTeams(userID uint) ([]models.Team, error) {
 	var teams []models.Team
-	
+
 	err := s.db.Joins("JOIN team_members ON team_members.team_id = teams.id").
-		Where("team_members.user_id = ? AND team_members.is_active = ? AND teams.is_active = ?", 
+		Where("team_members.user_id = ? AND team_members.is_active = ? AND teams.is_active = ?",
 			userID, true, true).
 		Preload("Members", "is_active = ?", true).
 		Find(&teams).Error
-	
+
 	return teams, err
 }
 
@@ -169,12 +169,12 @@ func (s *TeamService) JoinTeam(userID uint, teamCode string) error {
 
 	// Add as member
 	member := &models.TeamMember{
-		TeamID:       team.ID,
-		UserID:       userID,
-		Role:         models.TeamRoleMember,
-		JoinedAt:     time.Now(),
-		IsActive:     true,
-		TotalScore:   0,
+		TeamID:        team.ID,
+		UserID:        userID,
+		Role:          models.TeamRoleMember,
+		JoinedAt:      time.Now(),
+		IsActive:      true,
+		TotalScore:    0,
 		QuizzesPlayed: 0,
 	}
 
@@ -306,19 +306,19 @@ func (s *TeamService) TransferOwnership(teamID, currentOwnerID, newOwnerID uint)
 // GetTeamMembers returns all active members of a team with stats
 func (s *TeamService) GetTeamMembers(teamID uint) ([]models.TeamMember, error) {
 	var members []models.TeamMember
-	
+
 	err := s.db.Where("team_id = ? AND is_active = ?", teamID, true).
 		Preload("User").
 		Order("role ASC, total_score DESC").
 		Find(&members).Error
-	
+
 	return members, err
 }
 
 // GetTeamLeaderboard returns team members sorted by score
 func (s *TeamService) GetTeamLeaderboard(teamID uint, limit int) ([]models.TeamMember, error) {
 	var members []models.TeamMember
-	
+
 	query := s.db.Where("team_id = ? AND is_active = ?", teamID, true).
 		Preload("User").
 		Order("total_score DESC, quizzes_played DESC")
@@ -345,11 +345,11 @@ func (s *TeamService) UpdateMemberStats(teamID, userID uint, scoreToAdd int) err
 // GetTeamStats returns aggregated team statistics
 func (s *TeamService) GetTeamStats(teamID uint) (map[string]interface{}, error) {
 	var stats struct {
-		TotalMembers   int64
-		ActiveMembers  int64
-		TotalScore     int
-		TotalQuizzes   int
-		AvgScore       float64
+		TotalMembers  int64
+		ActiveMembers int64
+		TotalScore    int
+		TotalQuizzes  int
+		AvgScore      float64
 	}
 
 	// Get total members count
@@ -386,9 +386,9 @@ func (s *TeamService) GetTeamStats(teamID uint) (map[string]interface{}, error) 
 // SearchPublicTeams searches for public teams by name
 func (s *TeamService) SearchPublicTeams(query string, limit int) ([]models.Team, error) {
 	var teams []models.Team
-	
+
 	searchQuery := s.db.Where("is_public = ? AND is_active = ?", true, true)
-	
+
 	if query != "" {
 		searchQuery = searchQuery.Where("name LIKE ? OR description LIKE ?", "%"+query+"%", "%"+query+"%")
 	}
@@ -405,7 +405,7 @@ func (s *TeamService) SearchPublicTeams(query string, limit int) ([]models.Team,
 // GetPopularTeams returns teams with most members
 func (s *TeamService) GetPopularTeams(limit int) ([]models.Team, error) {
 	var teams []models.Team
-	
+
 	err := s.db.
 		Select("teams.*, COUNT(team_members.id) as member_count").
 		Joins("LEFT JOIN team_members ON team_members.team_id = teams.id AND team_members.is_active = true").
@@ -414,6 +414,20 @@ func (s *TeamService) GetPopularTeams(limit int) ([]models.Team, error) {
 		Order("member_count DESC").
 		Limit(limit).
 		Preload("Members", "is_active = ?", true).
+		Find(&teams).Error
+
+	return teams, err
+}
+
+// GetPublicTeams returns all public teams
+func (s *TeamService) GetPublicTeams(limit int) ([]models.Team, error) {
+	var teams []models.Team
+
+	err := s.db.
+		Where("is_public = ? AND is_active = ?", true, true).
+		Preload("Members", "is_active = ?", true).
+		Order("created_at DESC").
+		Limit(limit).
 		Find(&teams).Error
 
 	return teams, err
@@ -435,11 +449,11 @@ func (s *TeamService) IsTeamAdmin(userID, teamID uint) bool {
 	var member models.TeamMember
 	err := s.db.Where("team_id = ? AND user_id = ? AND is_active = ?", teamID, userID, true).
 		First(&member).Error
-	
+
 	if err != nil {
 		return false
 	}
-	
+
 	return member.Role == models.TeamRoleOwner || member.Role == models.TeamRoleAdmin
 }
 
@@ -448,11 +462,11 @@ func (s *TeamService) GetMemberRole(userID, teamID uint) (models.TeamRole, error
 	var member models.TeamMember
 	err := s.db.Where("team_id = ? AND user_id = ? AND is_active = ?", teamID, userID, true).
 		First(&member).Error
-	
+
 	if err != nil {
 		return "", errors.New("not a member of this team")
 	}
-	
+
 	return member.Role, nil
 }
 
@@ -462,11 +476,11 @@ func (s *TeamService) generateUniqueTeamCode() string {
 		bytes := make([]byte, 3)
 		rand.Read(bytes)
 		code := hex.EncodeToString(bytes)[:6]
-		
+
 		// Check if code already exists
 		var count int64
 		s.db.Model(&models.Team{}).Where("team_code = ?", code).Count(&count)
-		
+
 		if count == 0 {
 			return code
 		}

@@ -29,7 +29,7 @@ const SettingsManager = {
         }
     },
 
-    // Save settings to localStorage
+    // Save settings to localStorage AND database
     saveSettings(timeLimit, questionCount) {
         try {
             const settings = {
@@ -37,10 +37,13 @@ const SettingsManager = {
                 questionCount: Number(questionCount)
             };
             localStorage.setItem('quizSettings', JSON.stringify(settings));
-            
+
             // Trigger storage event for cross-page updates
             window.dispatchEvent(new Event('settingsUpdated'));
-            
+
+            // Sync to database for logged-in users
+            this.syncToDatabase();
+
             return true;
         } catch (e) {
             console.error('Error saving settings:', e);
@@ -48,15 +51,61 @@ const SettingsManager = {
         }
     },
 
-    // Save selected themes
+    // Save selected themes to localStorage AND database
     saveThemes(themes) {
         try {
             localStorage.setItem('selectedThemes', JSON.stringify(themes));
             window.dispatchEvent(new Event('settingsUpdated'));
+
+            // Sync to database for logged-in users
+            this.syncToDatabase();
+
             return true;
         } catch (e) {
             console.error('Error saving themes:', e);
             return false;
+        }
+    },
+
+    // Sync settings to database (for logged-in users only)
+    async syncToDatabase() {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            // Guest user - skip database sync
+            console.log('⏭️ Guest user - skipping database sync');
+            return;
+        }
+
+        try {
+            const settings = this.getSettings();
+            const themes = this.getSelectedThemes();
+
+            const response = await fetch('/api/auth/preferences', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    selected_themes: themes,
+                    quiz_time_limit: settings.timeLimit,
+                    quiz_question_count: settings.questionCount
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    console.log('✅ Settings synced to database');
+                } else {
+                    console.warn('⚠️ Database sync failed:', data.error);
+                }
+            } else {
+                console.warn('⚠️ Database sync request failed:', response.status);
+            }
+        } catch (error) {
+            console.warn('⚠️ Database sync error:', error.message);
+            // Don't throw - localStorage save should still work for guests
         }
     },
 

@@ -15,7 +15,17 @@ import (
 // CreateChallenge creates a new team challenge
 // POST /api/teams/:id/challenges
 func CreateChallenge(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uint)
+	userIDRaw := c.Locals("userId")
+	var userID uint
+	switch v := userIDRaw.(type) {
+	case float64:
+		userID = uint(v)
+	case uint:
+		userID = v
+	default:
+		return c.Status(401).JSON(fiber.Map{"success": false, "error": "Invalid user ID"})
+	}
+
 	teamID, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{
@@ -36,7 +46,7 @@ func CreateChallenge(c *fiber.Ctx) error {
 		Name            string    `json:"name"`
 		Description     string    `json:"description"`
 		ThemeID         uint      `json:"theme_id"`
-		QuestionCount   int       `json:"question_count"`
+		NumQuestions    int       `json:"num_questions"`
 		TimeLimit       int       `json:"time_limit"`
 		StartDate       time.Time `json:"start_date"`
 		EndDate         time.Time `json:"end_date"`
@@ -59,8 +69,8 @@ func CreateChallenge(c *fiber.Ctx) error {
 		})
 	}
 
-	if req.QuestionCount <= 0 {
-		req.QuestionCount = 10
+	if req.NumQuestions <= 0 {
+		req.NumQuestions = 10
 	}
 
 	if req.TimeLimit <= 0 {
@@ -73,7 +83,7 @@ func CreateChallenge(c *fiber.Ctx) error {
 		Name:            req.Name,
 		Description:     req.Description,
 		ThemeID:         req.ThemeID,
-		QuestionCount:   req.QuestionCount,
+		NumQuestions:    req.NumQuestions,
 		TimeLimit:       req.TimeLimit,
 		StartDate:       req.StartDate,
 		EndDate:         req.EndDate,
@@ -137,6 +147,49 @@ func GetTeamChallenges(c *fiber.Ctx) error {
 	})
 }
 
+// GetUserTeamChallenges retrieves all challenges from all teams the user is a member of
+// GET /api/teams/challenges
+func GetUserTeamChallenges(c *fiber.Ctx) error {
+	userIDRaw := c.Locals("userId")
+	var userID uint
+	switch v := userIDRaw.(type) {
+	case float64:
+		userID = uint(v)
+	case uint:
+		userID = v
+	default:
+		return c.Status(401).JSON(fiber.Map{"success": false, "error": "Invalid user ID"})
+	}
+
+	status := c.Query("status", "") // Optional filter by status
+
+	db := database.GetDB()
+	query := db.Joins("JOIN team_members ON team_members.team_id = challenges.team_id").
+		Where("team_members.user_id = ? AND team_members.is_active = ?", userID, true)
+
+	if status != "" {
+		query = query.Where("challenges.status = ?", status)
+	}
+
+	var challenges []models.Challenge
+	if err := query.Preload("Theme").
+		Preload("Participants").
+		Preload("Team").
+		Order("challenges.created_at DESC").
+		Find(&challenges).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"success": false,
+			"error":   "Failed to retrieve challenges",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"success":    true,
+		"challenges": challenges,
+		"count":      len(challenges),
+	})
+}
+
 // GetChallenge retrieves a specific challenge
 // GET /api/challenges/:id
 func GetChallenge(c *fiber.Ctx) error {
@@ -170,7 +223,17 @@ func GetChallenge(c *fiber.Ctx) error {
 // UpdateChallenge updates a challenge
 // PUT /api/challenges/:id
 func UpdateChallenge(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uint)
+	userIDRaw := c.Locals("userId")
+	var userID uint
+	switch v := userIDRaw.(type) {
+	case float64:
+		userID = uint(v)
+	case uint:
+		userID = v
+	default:
+		return c.Status(401).JSON(fiber.Map{"success": false, "error": "Invalid user ID"})
+	}
+
 	challengeID, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{
@@ -205,12 +268,12 @@ func UpdateChallenge(c *fiber.Ctx) error {
 	}
 
 	var req struct {
-		Name          string    `json:"name"`
-		Description   string    `json:"description"`
-		QuestionCount int       `json:"question_count"`
-		TimeLimit     int       `json:"time_limit"`
-		StartDate     time.Time `json:"start_date"`
-		EndDate       time.Time `json:"end_date"`
+		Name         string    `json:"name"`
+		Description  string    `json:"description"`
+		NumQuestions int       `json:"num_questions"`
+		TimeLimit    int       `json:"time_limit"`
+		StartDate    time.Time `json:"start_date"`
+		EndDate      time.Time `json:"end_date"`
 	}
 
 	if err := c.BodyParser(&req); err != nil {
@@ -231,8 +294,8 @@ func UpdateChallenge(c *fiber.Ctx) error {
 	if req.Description != "" {
 		updates["description"] = req.Description
 	}
-	if req.QuestionCount > 0 {
-		updates["question_count"] = req.QuestionCount
+	if req.NumQuestions > 0 {
+		updates["question_count"] = req.NumQuestions
 	}
 	if req.TimeLimit > 0 {
 		updates["time_limit"] = req.TimeLimit
@@ -260,7 +323,17 @@ func UpdateChallenge(c *fiber.Ctx) error {
 // DeleteChallenge deletes a challenge
 // DELETE /api/challenges/:id
 func DeleteChallenge(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uint)
+	userIDRaw := c.Locals("userId")
+	var userID uint
+	switch v := userIDRaw.(type) {
+	case float64:
+		userID = uint(v)
+	case uint:
+		userID = v
+	default:
+		return c.Status(401).JSON(fiber.Map{"success": false, "error": "Invalid user ID"})
+	}
+
 	challengeID, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{
@@ -312,7 +385,17 @@ func DeleteChallenge(c *fiber.Ctx) error {
 // JoinChallenge allows a user to join a challenge
 // POST /api/challenges/:id/join
 func JoinChallenge(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uint)
+	userIDRaw := c.Locals("userId")
+	var userID uint
+	switch v := userIDRaw.(type) {
+	case float64:
+		userID = uint(v)
+	case uint:
+		userID = v
+	default:
+		return c.Status(401).JSON(fiber.Map{"success": false, "error": "Invalid user ID"})
+	}
+
 	challengeID, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{
@@ -388,7 +471,17 @@ func JoinChallenge(c *fiber.Ctx) error {
 // LeaveChallenge allows a user to leave a challenge
 // POST /api/challenges/:id/leave
 func LeaveChallenge(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uint)
+	userIDRaw := c.Locals("userId")
+	var userID uint
+	switch v := userIDRaw.(type) {
+	case float64:
+		userID = uint(v)
+	case uint:
+		userID = v
+	default:
+		return c.Status(401).JSON(fiber.Map{"success": false, "error": "Invalid user ID"})
+	}
+
 	challengeID, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{
@@ -432,7 +525,17 @@ func LeaveChallenge(c *fiber.Ctx) error {
 // StartChallenge starts a pending challenge
 // POST /api/challenges/:id/start
 func StartChallenge(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uint)
+	userIDRaw := c.Locals("userId")
+	var userID uint
+	switch v := userIDRaw.(type) {
+	case float64:
+		userID = uint(v)
+	case uint:
+		userID = v
+	default:
+		return c.Status(401).JSON(fiber.Map{"success": false, "error": "Invalid user ID"})
+	}
+
 	challengeID, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{
@@ -496,7 +599,17 @@ func StartChallenge(c *fiber.Ctx) error {
 // SubmitChallengeScore submits a user's score for a challenge
 // POST /api/challenges/:id/submit
 func SubmitChallengeScore(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uint)
+	userIDRaw := c.Locals("userId")
+	var userID uint
+	switch v := userIDRaw.(type) {
+	case float64:
+		userID = uint(v)
+	case uint:
+		userID = v
+	default:
+		return c.Status(401).JSON(fiber.Map{"success": false, "error": "Invalid user ID"})
+	}
+
 	challengeID, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{

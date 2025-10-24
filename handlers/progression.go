@@ -24,6 +24,8 @@ type RecordGameRequest struct {
 	IsMultiplayer  bool   `json:"is_multiplayer"`
 	OpponentID     *uint  `json:"opponent_id"`
 	Difficulty     string `json:"difficulty"`
+	DidQuit        bool   `json:"did_quit"` // Track if user quit mid-game
+	TimeLimit      int    `json:"time_limit"` // Seconds per question (e.g., 5, 10, 20)
 }
 
 type AwardXPRequest struct {
@@ -59,25 +61,43 @@ func RecordGame(c *fiber.Ctx) error {
 		}
 	}()
 
-	user.TotalGames++
-	if req.Won {
-		user.Wins++
-		user.CurrentStreak++
-		if user.CurrentStreak > user.BestStreak {
-			user.BestStreak = user.CurrentStreak
-		}
+	// Track quits separately from completed games
+	if req.DidQuit {
+		user.QuitsCount++
+		// Don't count as a game played, just track the quit
 	} else {
-		user.Losses++
-		user.CurrentStreak = 0
-	}
+		// Only count completed games
+		user.TotalGames++
+		if req.Won {
+			user.Wins++
+			user.CurrentStreak++
+			if user.CurrentStreak > user.BestStreak {
+				user.BestStreak = user.CurrentStreak
+			}
+		} else {
+			user.Losses++
+			user.CurrentStreak = 0
+		}
 
-	if req.IsPerfect {
-		user.PerfectGames++
+		if req.IsPerfect {
+			user.PerfectGames++
+		}
 	}
 
 	oldLevel := user.Level
 	user.XP += xp
 	user.FaithPoints += faithPoints
+
+	// Calculate and apply rating change (chess-like ELO system, 0-10 scale)
+	ratingChange := calculateRatingChange(user.Rating, req)
+	user.Rating += ratingChange
+
+	// Ensure rating stays within bounds
+	if user.Rating > 10.0 {
+		user.Rating = 10.0
+	} else if user.Rating < 0.0 {
+		user.Rating = 0.0
+	}
 
 	for {
 		xpNeeded := calculateXPForLevel(user.Level + 1)
@@ -132,6 +152,8 @@ func RecordGame(c *fiber.Ctx) error {
 		"total_faith_points": user.FaithPoints,
 		"current_streak":     user.CurrentStreak,
 		"best_streak":        user.BestStreak,
+		"rating":             user.Rating,
+		"rating_change":      ratingChange,
 		"new_achievements":   newAchievements,
 	}
 
@@ -284,43 +306,169 @@ func GetUserAchievements(c *fiber.Ctx) error {
 }
 
 func calculateXP(req RecordGameRequest) int {
+	// Anti-cheat: Require 90% accuracy minimum to earn full XP
+	// This prevents people from rushing through and guessing
+	accuracy := float64(req.CorrectAnswers) / float64(req.TotalQuestions)
+	if accuracy < 0.90 {
+		// Below 90% accuracy = reduced XP (penalty for rushing/guessing)
+		// They get partial credit: 50% of normal XP
+		xp := req.CorrectAnswers * 5 // Half the normal rate
+		return xp
+	}
+
+	// BASE XP: Start with correct answers
 	xp := req.CorrectAnswers * 10
+
+	// DIFFICULTY MULTIPLIER based on TIME LIMIT per question
+	// Shorter time = Harder = More XP
+	// Time limits: 5s, 10s, 20s
+	var difficultyMultiplier float64
+	switch req.TimeLimit {
+	case 5:
+		difficultyMultiplier = 2.0 // 5 seconds = HARD = 2x XP
+	case 10:
+		difficultyMultiplier = 1.5 // 10 seconds = MEDIUM = 1.5x XP
+	case 20:
+		difficultyMultiplier = 1.0 // 20 seconds = EASY = 1x XP (base)
+	default:
+		// Fallback for custom time limits
+		if req.TimeLimit <= 5 {
+			difficultyMultiplier = 2.0
+		} else if req.TimeLimit <= 10 {
+			difficultyMultiplier = 1.5
+		} else {
+			difficultyMultiplier = 1.0
+		}
+	}
+
+	// Apply difficulty multiplier to base XP
+	xp = int(float64(xp) * difficultyMultiplier)
+
+	// QUESTION COUNT BONUS: More questions = More challenging
+	// 30 questions = +30% bonus
+	// 20 questions = +20% bonus
+	// 10 questions = base (no bonus)
+	if req.TotalQuestions >= 30 {
+		xp = int(float64(xp) * 1.3)
+	} else if req.TotalQuestions >= 20 {
+		xp = int(float64(xp) * 1.2)
+	}
+
+	// FAST ANSWER BONUS (only for 90%+ accuracy)
 	xp += req.FastAnswers * 5
-	
+
+	// PERFECT GAME BONUS
 	if req.IsPerfect {
 		xp += 50
 	}
-	
+
+	// WIN BONUS
 	if req.Won {
 		xp += 20
 	}
-	
+
+	// MULTIPLAYER BONUS
 	if req.IsMultiplayer {
 		xp += 30
 	}
-	
-	switch req.Difficulty {
-	case "hard":
-		xp = int(float64(xp) * 1.5)
-	case "expert":
-		xp = int(float64(xp) * 2.0)
-	}
-	
+
 	return xp
 }
 
 func calculateFaithPoints(req RecordGameRequest) int {
 	fp := req.CorrectAnswers * 2
-	
+
 	if req.IsPerfect {
 		fp += 10
 	}
-	
+
 	if req.Won {
 		fp += 5
 	}
-	
+
 	return fp
+}
+
+// calculateRatingChange calculates the rating change (chess-like ELO system, 0-10 scale)
+// Rating starts at 5.0 and adjusts based on performance
+func calculateRatingChange(currentRating float64, req RecordGameRequest) float64 {
+	// Base rating change (K-factor)
+	var baseChange float64
+
+	// Quit penalty: always -0.2
+	if req.DidQuit {
+		return -0.2
+	}
+
+	// Calculate accuracy
+	accuracy := float64(req.CorrectAnswers) / float64(req.TotalQuestions)
+
+	// Difficulty multiplier based on time limit
+	var difficultyMultiplier float64
+	switch req.TimeLimit {
+	case 5:
+		difficultyMultiplier = 1.5 // 5 seconds = HARD
+	case 10:
+		difficultyMultiplier = 1.2 // 10 seconds = MEDIUM
+	case 20:
+		difficultyMultiplier = 1.0 // 20 seconds = EASY
+	default:
+		if req.TimeLimit <= 5 {
+			difficultyMultiplier = 1.5
+		} else if req.TimeLimit <= 10 {
+			difficultyMultiplier = 1.2
+		} else {
+			difficultyMultiplier = 1.0
+		}
+	}
+
+	// Question count multiplier (more questions = more significant)
+	var questionMultiplier float64
+	if req.TotalQuestions >= 30 {
+		questionMultiplier = 1.2
+	} else if req.TotalQuestions >= 20 {
+		questionMultiplier = 1.1
+	} else {
+		questionMultiplier = 1.0
+	}
+
+	// Determine base change based on performance
+	if req.IsPerfect {
+		// Perfect game: big positive change
+		baseChange = 0.3
+	} else if req.Won && accuracy >= 0.90 {
+		// Win with high accuracy: positive change
+		baseChange = 0.2
+	} else if req.Won && accuracy < 0.90 {
+		// Win with low accuracy: small positive change
+		baseChange = 0.1
+	} else if !req.Won && accuracy >= 0.90 {
+		// Loss but high accuracy: small negative change
+		baseChange = -0.05
+	} else {
+		// Loss with low accuracy: larger negative change
+		baseChange = -0.15
+	}
+
+	// Apply multipliers
+	totalChange := baseChange * difficultyMultiplier * questionMultiplier
+
+	// Cap rating changes to prevent huge swings
+	if totalChange > 0.5 {
+		totalChange = 0.5
+	} else if totalChange < -0.3 {
+		totalChange = -0.3
+	}
+
+	// Ensure rating stays within 0.0 - 10.0 bounds
+	newRating := currentRating + totalChange
+	if newRating > 10.0 {
+		newRating = 10.0
+	} else if newRating < 0.0 {
+		newRating = 0.0
+	}
+
+	return totalChange
 }
 
 func calculateXPForLevel(level int) int {
@@ -389,7 +537,7 @@ func checkAchievements(user *models.User, req RecordGameRequest, tx *gorm.DB) []
 	return newAchievements
 }
 
-func checkSpeedAchievement(achievement models.Achievement, user *models.User, req RecordGameRequest) bool {
+func checkSpeedAchievement(achievement models.Achievement, _ *models.User, req RecordGameRequest) bool {
 	switch achievement.Name {
 	case "Lightning Fast":
 		return req.FastAnswers >= 5
@@ -463,7 +611,7 @@ func checkThemeAchievement(achievement models.Achievement, user *models.User, re
 	return false
 }
 
-func checkSpecialAchievement(achievement models.Achievement, user *models.User, req RecordGameRequest) bool {
+func checkSpecialAchievement(achievement models.Achievement, user *models.User, _ RecordGameRequest) bool {
 	switch achievement.Name {
 	case "First Steps":
 		return user.TotalGames >= 1

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fix Storage</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            background: #1a1a1a;
+            color: #fff;
+            text-align: center;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            margin: 20px;
+            border: none;
+            border-radius: 8px;
+            background: #4caf50;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        button:hover {
+            background: #66bb6a;
+        }
+        .info {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px auto;
+            max-width: 600px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Fix Storage</h1>
+    <div class="info">
+        <p>Click the button below to fix your settings:</p>
+        <ul style="text-align: left;">
+            <li>Sets time limit to 10 seconds</li>
+            <li>Sets question count to 10</li>
+            <li>Keeps your selected themes (IDs: 2, 3, 1)</li>
+        </ul>
+    </div>
+    
+    <button onclick="fixStorage()">Fix My Settings</button>
+    
+    <div id="result"></div>
+
+    <script>
+        function fixStorage() {
+            // Fix quizSettings
+            localStorage.setItem('quizSettings', JSON.stringify({
+                timeLimit: 10,
+                questionCount: 10
+            }));
+            
+            // Themes are already correct: [2, 3, 1]
+            // No need to change
+            
+            document.getElementById('result').innerHTML = `
+                <div class="info" style="background: #4caf50; margin-top: 20px;">
+                    <h2>✅ Settings Fixed!</h2>
+                    <p>Your localStorage has been updated.</p>
+                    <p><strong>Time Limit:</strong> 10 seconds</p>
+                    <p><strong>Question Count:</strong> 10</p>
+                    <p><strong>Selected Themes:</strong> [2, 3, 1]</p>
+                    <br>
+                    <a href="/" style="color: white; text-decoration: underline;">Go back to home page</a>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

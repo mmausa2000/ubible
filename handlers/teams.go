@@ -2,10 +2,11 @@
 package handlers
 
 import (
+	"log"
+	"strconv"
 	"ubible/database"
 	"ubible/models"
 	"ubible/services"
-	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -15,6 +16,9 @@ var teamService *services.TeamService
 // InitTeamHandlers initializes the team service
 func InitTeamHandlers() {
 	db := database.GetDB()
+	if db == nil {
+		panic("Database not initialized before InitTeamHandlers")
+	}
 	teamService = services.NewTeamService(db)
 }
 
@@ -23,8 +27,43 @@ func InitTeamHandlers() {
 // CreateTeam creates a new team
 // POST /api/teams
 func CreateTeam(c *fiber.Ctx) error {
-	// Get authenticated user ID from context
-	userID := c.Locals("userID").(uint)
+	log.Println("📝 CreateTeam endpoint called")
+
+	// Check if teamService is initialized
+	if teamService == nil {
+		log.Println("❌ Team service is nil!")
+		return c.Status(500).JSON(fiber.Map{
+			"success": false,
+			"error":   "Team service not initialized",
+		})
+	}
+	log.Println("✅ Team service initialized")
+
+	// Get authenticated user ID from context (middleware sets "userId")
+	userIDRaw := c.Locals("userId")
+	if userIDRaw == nil {
+		log.Println("❌ No userId in context - authentication failed")
+		return c.Status(401).JSON(fiber.Map{
+			"success": false,
+			"error":   "Unauthorized - no user ID",
+		})
+	}
+
+	// Handle both float64 (from JWT claims) and uint
+	var userID uint
+	switch v := userIDRaw.(type) {
+	case float64:
+		userID = uint(v)
+	case uint:
+		userID = v
+	default:
+		log.Printf("❌ Invalid userId type: %T (value: %v)\n", userIDRaw, userIDRaw)
+		return c.Status(401).JSON(fiber.Map{
+			"success": false,
+			"error":   "Invalid user ID type",
+		})
+	}
+	log.Printf("✅ User ID from context: %d\n", userID)
 
 	var req struct {
 		Name        string `json:"name"`
@@ -33,14 +72,17 @@ func CreateTeam(c *fiber.Ctx) error {
 	}
 
 	if err := c.BodyParser(&req); err != nil {
+		log.Printf("❌ Body parse error: %v\n", err)
 		return c.Status(400).JSON(fiber.Map{
 			"success": false,
 			"error":   "Invalid request body",
 		})
 	}
+	log.Printf("✅ Request body parsed: name='%s', desc='%s', public=%v\n", req.Name, req.Description, req.IsPublic)
 
 	// Validate name
 	if req.Name == "" {
+		log.Println("❌ Team name is empty")
 		return c.Status(400).JSON(fiber.Map{
 			"success": false,
 			"error":   "Team name is required",
@@ -48,14 +90,17 @@ func CreateTeam(c *fiber.Ctx) error {
 	}
 
 	// Create team
+	log.Printf("🔨 Creating team: name='%s', userID=%d\n", req.Name, userID)
 	team, err := teamService.CreateTeam(req.Name, req.Description, req.IsPublic, userID)
 	if err != nil {
+		log.Printf("❌ Team creation failed: %v\n", err)
 		return c.Status(500).JSON(fiber.Map{
 			"success": false,
 			"error":   err.Error(),
 		})
 	}
 
+	log.Printf("✅ Team created successfully! ID=%d, Code=%s\n", team.ID, team.TeamCode)
 	return c.Status(201).JSON(fiber.Map{
 		"success": true,
 		"message": "Team created successfully",
@@ -91,7 +136,16 @@ func GetTeam(c *fiber.Ctx) error {
 // GetUserTeams retrieves all teams for the authenticated user
 // GET /api/teams/my-teams
 func GetUserTeams(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uint)
+	userIDRaw := c.Locals("userId")
+	var userID uint
+	switch v := userIDRaw.(type) {
+	case float64:
+		userID = uint(v)
+	case uint:
+		userID = v
+	default:
+		return c.Status(401).JSON(fiber.Map{"success": false, "error": "Invalid user ID"})
+	}
 
 	teams, err := teamService.GetUserTeams(userID)
 	if err != nil {
@@ -111,7 +165,16 @@ func GetUserTeams(c *fiber.Ctx) error {
 // UpdateTeam updates team information
 // PUT /api/teams/:id
 func UpdateTeam(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uint)
+	userIDRaw := c.Locals("userId")
+	var userID uint
+	switch v := userIDRaw.(type) {
+	case float64:
+		userID = uint(v)
+	case uint:
+		userID = v
+	default:
+		return c.Status(401).JSON(fiber.Map{"success": false, "error": "Invalid user ID"})
+	}
 	teamID, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{
@@ -150,7 +213,16 @@ func UpdateTeam(c *fiber.Ctx) error {
 // DeleteTeam deletes a team
 // DELETE /api/teams/:id
 func DeleteTeam(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uint)
+	userIDRaw := c.Locals("userId")
+	var userID uint
+	switch v := userIDRaw.(type) {
+	case float64:
+		userID = uint(v)
+	case uint:
+		userID = v
+	default:
+		return c.Status(401).JSON(fiber.Map{"success": false, "error": "Invalid user ID"})
+	}
 	teamID, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{
@@ -178,7 +250,16 @@ func DeleteTeam(c *fiber.Ctx) error {
 // JoinTeam allows a user to join a team via code
 // POST /api/teams/join
 func JoinTeam(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uint)
+	userIDRaw := c.Locals("userId")
+	var userID uint
+	switch v := userIDRaw.(type) {
+	case float64:
+		userID = uint(v)
+	case uint:
+		userID = v
+	default:
+		return c.Status(401).JSON(fiber.Map{"success": false, "error": "Invalid user ID"})
+	}
 
 	var req struct {
 		TeamCode string `json:"team_code"`
@@ -219,7 +300,16 @@ func JoinTeam(c *fiber.Ctx) error {
 // LeaveTeam allows a user to leave a team
 // POST /api/teams/:id/leave
 func LeaveTeam(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uint)
+	userIDRaw := c.Locals("userId")
+	var userID uint
+	switch v := userIDRaw.(type) {
+	case float64:
+		userID = uint(v)
+	case uint:
+		userID = v
+	default:
+		return c.Status(401).JSON(fiber.Map{"success": false, "error": "Invalid user ID"})
+	}
 	teamID, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{
@@ -271,8 +361,17 @@ func GetTeamMembers(c *fiber.Ctx) error {
 // RemoveMember removes a member from a team
 // DELETE /api/teams/:id/members/:memberId
 func RemoveMember(c *fiber.Ctx) error {
-	adminID := c.Locals("userID").(uint)
-	
+	adminIDRaw := c.Locals("userId")
+	var adminID uint
+	switch v := adminIDRaw.(type) {
+	case float64:
+		adminID = uint(v)
+	case uint:
+		adminID = v
+	default:
+		return c.Status(401).JSON(fiber.Map{"success": false, "error": "Invalid user ID"})
+	}
+
 	teamID, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{
@@ -306,8 +405,17 @@ func RemoveMember(c *fiber.Ctx) error {
 // PromoteMember promotes a member to admin
 // POST /api/teams/:id/members/:memberId/promote
 func PromoteMember(c *fiber.Ctx) error {
-	ownerID := c.Locals("userID").(uint)
-	
+	ownerIDRaw := c.Locals("userId")
+	var ownerID uint
+	switch v := ownerIDRaw.(type) {
+	case float64:
+		ownerID = uint(v)
+	case uint:
+		ownerID = v
+	default:
+		return c.Status(401).JSON(fiber.Map{"success": false, "error": "Invalid user ID"})
+	}
+
 	teamID, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{
@@ -341,8 +449,17 @@ func PromoteMember(c *fiber.Ctx) error {
 // DemoteMember demotes an admin to member
 // POST /api/teams/:id/members/:memberId/demote
 func DemoteMember(c *fiber.Ctx) error {
-	ownerID := c.Locals("userID").(uint)
-	
+	ownerIDRaw := c.Locals("userId")
+	var ownerID uint
+	switch v := ownerIDRaw.(type) {
+	case float64:
+		ownerID = uint(v)
+	case uint:
+		ownerID = v
+	default:
+		return c.Status(401).JSON(fiber.Map{"success": false, "error": "Invalid user ID"})
+	}
+
 	teamID, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{
@@ -376,8 +493,17 @@ func DemoteMember(c *fiber.Ctx) error {
 // TransferOwnership transfers team ownership
 // POST /api/teams/:id/transfer
 func TransferOwnership(c *fiber.Ctx) error {
-	currentOwnerID := c.Locals("userID").(uint)
-	
+	currentOwnerIDRaw := c.Locals("userId")
+	var currentOwnerID uint
+	switch v := currentOwnerIDRaw.(type) {
+	case float64:
+		currentOwnerID = uint(v)
+	case uint:
+		currentOwnerID = v
+	default:
+		return c.Status(401).JSON(fiber.Map{"success": false, "error": "Invalid user ID"})
+	}
+
 	teamID, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{
@@ -571,10 +697,45 @@ func GetPopularTeams(c *fiber.Ctx) error {
 	})
 }
 
+// GetPublicTeams retrieves public teams (no auth required)
+// GET /api/teams/public
+func GetPublicTeams(c *fiber.Ctx) error {
+	limit := 20
+
+	if limitStr := c.Query("limit"); limitStr != "" {
+		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
+			limit = parsedLimit
+		}
+	}
+
+	teams, err := teamService.GetPublicTeams(limit)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"success": false,
+			"error":   "Failed to retrieve public teams",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"teams":   teams,
+		"count":   len(teams),
+	})
+}
+
 // CheckMembership checks if user is a member of a team
 // GET /api/teams/:id/check-membership
 func CheckMembership(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uint)
+	userIDRaw := c.Locals("userId")
+	var userID uint
+	switch v := userIDRaw.(type) {
+	case float64:
+		userID = uint(v)
+	case uint:
+		userID = v
+	default:
+		return c.Status(401).JSON(fiber.Map{"success": false, "error": "Invalid user ID"})
+	}
 	teamID, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{
@@ -585,7 +746,7 @@ func CheckMembership(c *fiber.Ctx) error {
 
 	isMember := teamService.IsTeamMember(userID, uint(teamID))
 	isAdmin := teamService.IsTeamAdmin(userID, uint(teamID))
-	
+
 	var role models.TeamRole
 	if isMember {
 		role, _ = teamService.GetMemberRole(userID, uint(teamID))

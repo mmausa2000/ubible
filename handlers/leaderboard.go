@@ -23,6 +23,8 @@ func GetLeaderboard(c *fiber.Ctx) error {
 
 	var orderBy string
 	switch category {
+	case "xp":
+		orderBy = "xp DESC, wins DESC, total_games ASC"
 	case "level":
 		orderBy = "level DESC, xp DESC"
 	case "wins":
@@ -32,7 +34,7 @@ func GetLeaderboard(c *fiber.Ctx) error {
 	case "accuracy":
 		orderBy = "perfect_games DESC, wins DESC"
 	default:
-		orderBy = "level DESC, xp DESC"
+		orderBy = "xp DESC, wins DESC, total_games ASC" // Default to XP ranking
 	}
 
 	if err := db.Where("is_guest = ?", false).
@@ -134,6 +136,9 @@ func GetUserRank(c *fiber.Ctx) error {
 	var query string
 
 	switch category {
+	case "xp":
+		query = "SELECT COUNT(*) + 1 FROM users WHERE is_guest = false AND (xp > ? OR (xp = ? AND wins > ?) OR (xp = ? AND wins = ? AND total_games < ?))"
+		db.Raw(query, user.XP, user.XP, user.Wins, user.XP, user.Wins, user.TotalGames).Scan(&rank)
 	case "level":
 		query = "SELECT COUNT(*) + 1 FROM users WHERE is_guest = false AND (level > ? OR (level = ? AND xp > ?))"
 		db.Raw(query, user.Level, user.Level, user.XP).Scan(&rank)
@@ -147,8 +152,8 @@ func GetUserRank(c *fiber.Ctx) error {
 		query = "SELECT COUNT(*) + 1 FROM users WHERE is_guest = false AND (perfect_games > ? OR (perfect_games = ? AND wins > ?))"
 		db.Raw(query, user.PerfectGames, user.PerfectGames, user.Wins).Scan(&rank)
 	default:
-		query = "SELECT COUNT(*) + 1 FROM users WHERE is_guest = false AND (level > ? OR (level = ? AND xp > ?))"
-		db.Raw(query, user.Level, user.Level, user.XP).Scan(&rank)
+		query = "SELECT COUNT(*) + 1 FROM users WHERE is_guest = false AND (xp > ? OR (xp = ? AND wins > ?) OR (xp = ? AND wins = ? AND total_games < ?))"
+		db.Raw(query, user.XP, user.XP, user.Wins, user.XP, user.Wins, user.TotalGames).Scan(&rank)
 	}
 
 	return c.JSON(fiber.Map{
@@ -183,6 +188,8 @@ func GetLeaderboardAroundUser(c *fiber.Ctx) error {
 	var orderBy string
 
 	switch category {
+	case "xp":
+		orderBy = "xp DESC, wins DESC, total_games ASC"
 	case "level":
 		orderBy = "level DESC, xp DESC"
 	case "wins":
@@ -192,7 +199,7 @@ func GetLeaderboardAroundUser(c *fiber.Ctx) error {
 	case "accuracy":
 		orderBy = "perfect_games DESC, wins DESC"
 	default:
-		orderBy = "level DESC, xp DESC"
+		orderBy = "xp DESC, wins DESC, total_games ASC"
 	}
 
 	// Get users around the target user

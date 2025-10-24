@@ -2,7 +2,7 @@
 package admin
 
 import (
-	"bible-quiz-pro/services"
+	"ubible/services"
 
 	"github.com/gofiber/fiber/v2"
 )

@@ -1,4 +1,4 @@
-// database/db.go - Database Connection (Fixed)
+// database/db.go - Database Connection (PostgreSQL)
 package database
 
 import (
@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"gorm.io/driver/sqlite"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -16,18 +16,23 @@ var db *gorm.DB
 
 // InitDB initializes the database connection
 func InitDB() {
-	dbPath := os.Getenv("DB_PATH")
-	if dbPath == "" {
-		dbPath = "./data/ubible_quiz.db"
-	}
+	// Get PostgreSQL connection string from environment
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		// Fallback to individual parameters
+		host := getEnvOrDefault("DB_HOST", "localhost")
+		port := getEnvOrDefault("DB_PORT", "5432")
+		user := getEnvOrDefault("DB_USER", "postgres")
+		password := getEnvOrDefault("DB_PASSWORD", "")
+		dbname := getEnvOrDefault("DB_NAME", "ubible")
+		sslmode := getEnvOrDefault("DB_SSLMODE", "disable")
 
-	// Ensure data directory exists
-	if err := os.MkdirAll("./data", 0755); err != nil {
-		log.Fatalf("Failed to create data directory: %v", err)
+		dsn = fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+			host, port, user, password, dbname, sslmode)
 	}
 
 	var err error
-	db, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{
+	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
 		NowFunc: func() time.Time {
 			return time.Now().UTC()
@@ -35,7 +40,7 @@ func InitDB() {
 	})
 
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		log.Fatalf("Failed to connect to PostgreSQL database: %v", err)
 	}
 
 	// Configure connection pool
@@ -48,10 +53,17 @@ func InitDB() {
 	sqlDB.SetMaxOpenConns(100)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 
-	log.Println("✅ Database connected successfully")
+	log.Println("✅ PostgreSQL database connected successfully")
 
 	// Run migrations (no parameter needed)
 	RunMigrations()
+}
+
+func getEnvOrDefault(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }
 
 // GetDB returns the database instance

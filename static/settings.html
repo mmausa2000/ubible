@@ -46,6 +46,16 @@
             90% { opacity: 1; }
         }
 
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(400px); opacity: 0; }
+        }
+
         .settings-container {
             position: relative;
             z-index: 1;
@@ -258,6 +268,7 @@
 
         .slider {
             -webkit-appearance: none;
+            appearance: none;
             width: 100%;
             height: 8px;
             border-radius: 5px;
@@ -498,6 +509,74 @@
         .theme-stats {
             color: rgba(255, 255, 255, 0.6);
             font-size: 0.8rem;
+        }
+
+        .theme-add-btn, .theme-remove-btn {
+            margin-top: 10px;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        .theme-add-btn {
+            background: linear-gradient(135deg, #4caf50, #66bb6a);
+            color: white;
+        }
+
+        .theme-add-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+        }
+
+        .theme-remove-btn {
+            background: linear-gradient(135deg, #f44336, #e57373);
+            color: white;
+        }
+
+        .theme-remove-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(244, 67, 54, 0.3);
+        }
+
+        .theme-remove-x {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 22px;
+            height: 22px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(244, 67, 54, 0.15);
+            color: #f44336;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            z-index: 100;
+            line-height: 1;
+            padding: 0;
+            opacity: 0.7;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .theme-remove-x:hover {
+            background: #f44336;
+            color: white;
+            transform: scale(1.15) rotate(90deg);
+            opacity: 1;
+            box-shadow: 0 3px 8px rgba(244, 67, 54, 0.4);
+        }
+
+        .theme-card:hover .theme-remove-x {
+            opacity: 1;
         }
 
         /* Create Theme Tab */
@@ -863,25 +942,31 @@
             font-weight: 700; 
         }
         
-        .close-btn { 
-            width: 40px; 
-            height: 40px; 
-            background: rgba(255, 255, 255, 0.2); 
-            border: none; 
-            border-radius: 50%; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            cursor: pointer; 
-            transition: all 0.3s; 
-            color: white; 
-            font-size: 1.8rem; 
-            line-height: 1; 
+        .close-btn {
+            width: 36px;
+            height: 36px;
+            background: rgba(255, 255, 255, 0.25);
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            color: white;
+            font-size: 24px;
+            font-weight: 300;
+            line-height: 1;
+            padding: 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         }
-        
-        .close-btn:hover { 
-            background: rgba(255, 255, 255, 0.3); 
-            transform: rotate(90deg); 
+
+        .close-btn:hover {
+            background: rgba(255, 255, 255, 0.95);
+            border-color: rgba(255, 255, 255, 0.95);
+            color: #4caf50;
+            transform: rotate(90deg) scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
         }
 
         .modal-body { 
@@ -1108,6 +1193,38 @@
 
         .toast-icon {
             font-size: 1.2rem;
+        }
+
+        /* Game Mode Toggle */
+        .game-mode-btn {
+            flex: 1;
+            min-width: 140px;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .game-mode-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(76, 175, 80, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .game-mode-btn.active {
+            background: rgba(76, 175, 80, 0.2);
+            border-color: #4caf50;
+            color: #4caf50;
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
         }
 
         /* Search Bar */
@@ -1365,7 +1482,7 @@
         <div class="header">
             <div class="header-left">
                 <button class="back-btn" onclick="window.location.href='/'">←</button>
-                <div class="page-info">
+                <div class="page-info" onclick="location.href='/'" style="cursor: pointer;" title="Go to Home">
                     <h1>Quiz Settings</h1>
                     <p>Customize your experience</p>
                 </div>
@@ -1495,7 +1612,12 @@
                 <div id="quickStartSection"></div>
 
                 <div class="themes-header">
-                    <h2 class="themes-title">📚 Choose Themes <span style="color: rgba(255,255,255,0.5); font-size: 0.9rem; font-weight: 400;" id="themeLimitText">(0/5 selected)</span></h2>
+                    <div>
+                        <h2 class="themes-title">📚 Choose Your Top 5 <span style="color: rgba(255,255,255,0.5); font-size: 0.9rem; font-weight: 400;" id="themeLimitText">(0/5 selected)</span></h2>
+                        <p style="color: rgba(255,255,255,0.6); font-size: 0.85rem; margin-top: 5px;">
+                            💾 Theme Bank <span id="bankCount" style="color: #4ecdc4;">(0/10)</span> · Add themes from <a href="/" style="color: #4ecdc4; text-decoration: none;">home page search</a>
+                        </p>
+                    </div>
                     <div class="theme-controls">
                         <button class="theme-control-btn refresh" onclick="openThemeCreator()" style="background: rgba(76,175,80,0.15); border-color: rgba(76,175,80,0.4); color: #4caf50;">⚙ Create Theme</button>
                         <button class="theme-control-btn select" onclick="selectAllThemes()">✓ Select All</button>
@@ -1504,8 +1626,29 @@
                     </div>
                 </div>
 
+                <!-- Game Mode Toggle -->
+                <div style="background: rgba(255, 255, 255, 0.05); padding: 15px; border-radius: 12px; margin-bottom: 20px;">
+                    <div style="color: rgba(255,255,255,0.7); font-size: 0.85rem; font-weight: 600; margin-bottom: 10px;">
+                        🎮 GAME MODE
+                    </div>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="game-mode-btn active" data-mode="both" onclick="setGameMode('both')">
+                            <span style="font-size: 1.1rem;">🔀</span>
+                            <span>Both</span>
+                        </button>
+                        <button class="game-mode-btn" data-mode="r-v" onclick="setGameMode('r-v')">
+                            <span style="font-size: 1.1rem;">📖→📝</span>
+                            <span>Reference to Verse</span>
+                        </button>
+                        <button class="game-mode-btn" data-mode="v-r" onclick="setGameMode('v-r')">
+                            <span style="font-size: 1.1rem;">📝→📖</span>
+                            <span>Verse to Reference</span>
+                        </button>
+                    </div>
+                </div>
+
                 <div class="theme-search">
-                    <input type="text" class="search-input" id="themeSearch" placeholder="🔍 Search themes..." oninput="filterThemes(this.value)">
+                    <input type="text" class="search-input" id="themeSearch" placeholder="🔍 Search all themes in database..." oninput="filterThemes(this.value)">
                 </div>
 
                 <div class="theme-grid" id="themeGrid">
@@ -1559,9 +1702,14 @@
                     <span>Last played: <span class="value" id="lastPlayed">Today</span></span>
                 </div>
             </div>
-            <button class="btn btn-primary" id="startBtn" onclick="startQuiz()">
-                <span>🚀 Start Quiz</span>
-            </button>
+            <div style="display: flex; gap: 15px; justify-content: center;">
+                <button class="btn btn-secondary" id="saveBtn" onclick="saveSettingsManually()" style="flex: 1; max-width: 300px;">
+                    <span>💾 Save Settings</span>
+                </button>
+                <button class="btn btn-primary" id="startBtn" onclick="startQuiz()" style="flex: 1; max-width: 300px;">
+                    <span>🚀 Start Quiz</span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -1736,32 +1884,38 @@ Examples:
 
         async function loadThemes() {
             try {
-                const response = await fetch('/api/themes');
-                const data = await response.json();
-                if (!data.success || !data.themes) throw new Error('Failed to load themes');
-                availableThemes = data.themes;
+                // Load themes from bank (localStorage)
+                const bank = localStorage.getItem('themeBank');
+                if (bank) {
+                    availableThemes = JSON.parse(bank);
+                    console.log('Loaded', availableThemes.length, 'themes from bank');
+                } else {
+                    availableThemes = [];
+                    console.log('No themes in bank');
+                }
                 renderThemes();
             } catch (error) {
-                console.error('Error loading themes:', error);
-                document.getElementById('themeGrid').innerHTML = '<div style="color: #ff5252; padding: 40px;">Failed to load themes. Please refresh the page.</div>';
+                console.error('Error loading themes from bank:', error);
+                document.getElementById('themeGrid').innerHTML = '<div style="color: #ff5252; padding: 40px;">Failed to load themes. Please add themes from the home page search.</div>';
             }
         }
 
         async function loadThemesNoCache() {
             try {
-                console.log('loadThemesNoCache: Fetching themes from API...');
-                const response = await fetch('/api/themes?ts=' + Date.now(), {
-                    headers: { 'Cache-Control': 'no-store' }
-                });
-                const data = await response.json();
-                console.log('loadThemesNoCache: API response:', data);
-                if (!data.success || !data.themes) throw new Error('Failed to load themes');
-                console.log('loadThemesNoCache: Loaded', data.themes.length, 'themes');
-                availableThemes = data.themes;
+                console.log('loadThemesNoCache: Refreshing themes from bank...');
+                // Reload from bank
+                const bank = localStorage.getItem('themeBank');
+                if (bank) {
+                    availableThemes = JSON.parse(bank);
+                    console.log('loadThemesNoCache: Loaded', availableThemes.length, 'themes from bank');
+                } else {
+                    availableThemes = [];
+                    console.log('loadThemesNoCache: No themes in bank');
+                }
                 renderThemes();
             } catch (error) {
                 console.error('Error loading themes:', error);
-                document.getElementById('themeGrid').innerHTML = '<div style="color: #ff5252; padding: 40px;">Failed to load themes. Please refresh the page.</div>';
+                document.getElementById('themeGrid').innerHTML = '<div style="color: #ff5252; padding: 40px;">Failed to load themes. Please add themes from the home page search.</div>';
             }
         }
 
@@ -1771,9 +1925,26 @@ Examples:
 
             console.log('renderThemes: availableThemes =', availableThemes);
 
+            // Update bank count
+            const bankCountEl = document.getElementById('bankCount');
+            if (bankCountEl) {
+                bankCountEl.textContent = `(${availableThemes.length}/10)`;
+            }
+
             if (!Array.isArray(availableThemes) || availableThemes.length === 0) {
                 console.log('renderThemes: No themes available');
-                grid.innerHTML = '<div style="color: rgba(255,255,255,0.7); padding: 40px;">No themes available</div>';
+                grid.innerHTML = `
+                    <div style="color: rgba(255,255,255,0.7); padding: 40px; text-align: center; grid-column: 1 / -1;">
+                        <div style="font-size: 3rem; margin-bottom: 15px;">📚</div>
+                        <div style="font-size: 1.2rem; color: white; margin-bottom: 10px;">No themes in your bank yet!</div>
+                        <div style="color: rgba(255,255,255,0.5); margin-bottom: 20px;">
+                            Use the search box above to find and add themes from the database
+                        </div>
+                        <div style="font-size: 0.9rem; color: rgba(255,255,255,0.4);">
+                            💡 Tip: Try searching "beard", "creation", or "wachawi"
+                        </div>
+                    </div>
+                `;
                 return;
             }
 
@@ -1781,19 +1952,28 @@ Examples:
                 ...theme,
                 disabled: Number(theme.question_count) < 5
             }));
-            
+
             console.log('renderThemes: Rendering', validThemes.length, 'themes');
 
             grid.innerHTML = validThemes.map(theme => {
-                const isActiveChip = savedThemes.includes(theme.name);
+                const isActiveChip = savedThemes.includes(theme.id);
                 const versesLabel = `${theme.question_count} verse${theme.question_count === 1 ? '' : 's'}`;
                 const safeName = String(theme.name).replace(/"/g, '&quot;');
+                const safeNameForFunc = String(theme.name).replace(/'/g, "\\'");
+                const creatorTag = theme.created_by ? `<div style="font-size: 0.75rem; color: rgba(255,255,255,0.4); margin-top: 2px;">@${theme.created_by}</div>` : '';
 
                 return `
                     <div class="theme-card ${isActiveChip ? 'active' : ''} ${theme.disabled ? 'disabled' : ''}"
-                         data-theme-name="${safeName}">
+                         data-theme-name="${safeName}"
+                         data-theme-id="${theme.id}"
+                         style="position: relative;">
+                        <button class="theme-remove-x"
+                                onclick="event.stopPropagation(); removeThemeFromBank(${theme.id}, '${safeNameForFunc}')"
+                                title="Remove from bank">
+                            ✕
+                        </button>
                         <div class="theme-name">${theme.name}</div>
-                        <div class="theme-stats">${versesLabel}</div>
+                        <div class="theme-stats">${versesLabel}${creatorTag}</div>
                     </div>
                 `;
             }).join('');
@@ -1847,18 +2027,47 @@ Examples:
             saveSelectedThemes();
         }
 
-        function saveSelectedThemes() {
+        async function saveSelectedThemes() {
             const selectedThemes = [];
             document.querySelectorAll('.theme-card.active').forEach(chip => {
-                selectedThemes.push(chip.dataset.themeName);
+                selectedThemes.push(parseInt(chip.dataset.themeId));
             });
+
+            // Always save to localStorage (for guests and as backup)
             localStorage.setItem('selectedThemes', JSON.stringify(selectedThemes));
-            
-            // Also save current quiz settings
             localStorage.setItem('quizSettings', JSON.stringify({
                 timeLimit: currentTime,
                 questionCount: currentQuestions
             }));
+
+            // If user is logged in, also save to database
+            const token = localStorage.getItem('token');
+            if (token) {
+                try {
+                    const response = await fetch('/api/auth/preferences', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            selected_themes: selectedThemes,
+                            quiz_time_limit: currentTime,
+                            quiz_question_count: currentQuestions
+                        })
+                    });
+
+                    if (response.status === 401) {
+                        // Token expired - but don't clear it immediately
+                        // The user might have just logged in and the page is using an old cached token
+                        console.warn('⚠️ 401 error - token may be expired (not clearing immediately)');
+                    } else if (!response.ok) {
+                        console.warn('Failed to save preferences to database, using localStorage');
+                    }
+                } catch (error) {
+                    console.warn('Error saving preferences to database:', error);
+                }
+            }
         }
 
         function updateThemeCount() {
@@ -1910,42 +2119,232 @@ Examples:
             `;
         }
 
+        let searchTimeout;
+        let allDatabaseThemes = [];
+        const MAX_BANK_THEMES = 10;
+
+        // Load all themes from database for searching
+        async function loadAllDatabaseThemes() {
+            try {
+                console.log('🔍 Loading all themes from database for search...');
+                const response = await fetch('/api/themes');
+                if (!response.ok) throw new Error('Failed to fetch themes');
+                const data = await response.json();
+                allDatabaseThemes = data.themes || [];
+                console.log(`✅ Loaded ${allDatabaseThemes.length} themes from database`);
+            } catch (error) {
+                console.error('❌ Error loading database themes:', error);
+            }
+        }
+
         function filterThemes(searchTerm) {
             const term = searchTerm.toLowerCase().trim();
-            const cards = document.querySelectorAll('.theme-card');
-            
-            let visibleCount = 0;
-            cards.forEach(card => {
-                const themeName = card.querySelector('.theme-name')?.textContent.toLowerCase() || '';
-                if (themeName.includes(term)) {
-                    card.style.display = '';
-                    visibleCount++;
-                } else {
-                    card.style.display = 'none';
-                }
+
+            // If empty search, show bank themes only
+            if (!term) {
+                renderThemes();
+                return;
+            }
+
+            // Search database themes
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                searchDatabaseThemes(term);
+            }, 300);
+        }
+
+        async function searchDatabaseThemes(searchQuery) {
+            console.log(`🔍 Searching database for: "${searchQuery}"`);
+            const grid = document.getElementById('themeGrid');
+            const bank = getThemeBank();
+            const bankIds = bank.map(t => t.id);
+
+            // Filter themes from database
+            const databaseMatches = allDatabaseThemes.filter(theme => {
+                const themeName = (theme.name || '').toLowerCase();
+                const creatorName = (theme.created_by || '').toLowerCase();
+                return themeName.includes(searchQuery) || creatorName.includes(searchQuery);
             });
 
-            // Show empty state if no results
-            const grid = document.getElementById('themeGrid');
-            const existingEmpty = grid.querySelector('.search-empty');
-            
-            if (visibleCount === 0 && term !== '') {
-                if (!existingEmpty) {
-                    const emptyDiv = document.createElement('div');
-                    emptyDiv.className = 'search-empty';
-                    emptyDiv.style.gridColumn = '1 / -1';
-                    emptyDiv.style.textAlign = 'center';
-                    emptyDiv.style.padding = '40px';
-                    emptyDiv.style.color = 'rgba(255,255,255,0.6)';
-                    emptyDiv.innerHTML = `
+            console.log(`✅ Found ${databaseMatches.length} matching database themes`);
+            console.log(`📦 Bank has ${bank.length} themes (always showing all)`);
+
+            // Show message only if no database matches found
+            if (databaseMatches.length === 0 && bank.length === 0) {
+                grid.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: rgba(255,255,255,0.6);">
                         <div style="font-size: 3rem; margin-bottom: 10px;">🔍</div>
                         <div style="font-size: 1.1rem; color: white; margin-bottom: 5px;">No themes found</div>
                         <div>Try a different search term</div>
+                    </div>
+                `;
+                return;
+            }
+
+            let resultsHTML = '';
+
+            // Show database themes that are NOT in bank FIRST
+            const notInBankMatches = databaseMatches.filter(theme => !bankIds.includes(theme.id));
+            if (notInBankMatches.length > 0) {
+                resultsHTML += `
+                    <div style="grid-column: 1 / -1; color: rgba(255,255,255,0.7); font-size: 0.85rem; font-weight: 600; margin: 25px 0 10px 0; padding-left: 5px;">
+                        🔍 AVAILABLE TO ADD (${notInBankMatches.length})
+                    </div>
+                `;
+
+                const bankFull = bank.length >= MAX_BANK_THEMES;
+
+                resultsHTML += notInBankMatches.map(theme => {
+                    const creatorTag = theme.created_by ? `<div style="font-size: 0.7rem; color: rgba(255,255,255,0.4); margin-top: 2px;">@${theme.created_by}</div>` : '';
+
+                    let buttonHTML;
+                    if (bankFull) {
+                        buttonHTML = `
+                            <button class="theme-add-btn" disabled style="opacity: 0.5; cursor: not-allowed;">
+                                Bank Full (10/10)
+                            </button>
+                        `;
+                    } else {
+                        buttonHTML = `
+                            <button class="theme-add-btn" onclick="addThemeToBank(${theme.id}, '${theme.name.replace(/'/g, "\\'")}', ${theme.question_count || 0}, '${theme.created_by || ''}')">
+                                ➕ Add to Bank
+                            </button>
+                        `;
+                    }
+
+                    return `
+                        <div class="theme-card" style="position: relative;">
+                            <div class="theme-name">${theme.name}</div>
+                            <div style="font-size: 0.75rem; color: rgba(255,255,255,0.5); margin-top: 5px;">
+                                ${theme.question_count || 0} questions
+                            </div>
+                            ${creatorTag}
+                            ${buttonHTML}
+                        </div>
                     `;
-                    grid.appendChild(emptyDiv);
-                }
-            } else if (existingEmpty) {
-                existingEmpty.remove();
+                }).join('');
+            }
+
+            // Show bank themes at the BOTTOM (these are selectable)
+            // ALWAYS show ALL bank themes, regardless of search match
+            if (bank.length > 0) {
+                resultsHTML += `
+                    <div style="grid-column: 1 / -1; color: rgba(255,255,255,0.7); font-size: 0.85rem; font-weight: 600; margin: 20px 0 10px 0; padding-left: 5px;">
+                        💾 IN YOUR BANK (${bank.length})
+                    </div>
+                `;
+
+                resultsHTML += bank.map(theme => {
+                    const selected = document.querySelector(`[data-theme-id="${theme.id}"]`)?.classList.contains('active') || false;
+                    const safeName = (theme.name || '').replace(/'/g, "\\'");
+                    const creatorTag = theme.created_by ? `<div style="font-size: 0.7rem; color: rgba(255,255,255,0.4); margin-top: 2px;">@${theme.created_by}</div>` : '';
+
+                    return `
+                        <div class="theme-card ${selected ? 'active' : ''}"
+                             data-theme-id="${theme.id}"
+                             data-theme-name="${safeName}"
+                             onclick="toggleTheme(this, ${theme.id}, '${safeName}')"
+                             style="position: relative;">
+                            <button class="theme-remove-x"
+                                    onclick="event.stopPropagation(); removeThemeFromBank(${theme.id}, '${safeName}')"
+                                    title="Remove from bank">
+                                ✕
+                            </button>
+                            <div class="theme-name">${theme.name}</div>
+                            <div style="font-size: 0.75rem; color: rgba(255,255,255,0.5); margin-top: 5px;">
+                                ${theme.question_count || 0} questions
+                            </div>
+                            ${creatorTag}
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            grid.innerHTML = resultsHTML;
+        }
+
+        function getThemeBank() {
+            const bank = localStorage.getItem('themeBank');
+            return bank ? JSON.parse(bank) : [];
+        }
+
+        function addThemeToBank(themeId, themeName, questionCount, createdBy) {
+            console.log(`➕ Adding theme to bank:`, { themeId, themeName, questionCount, createdBy });
+            const bank = getThemeBank();
+
+            if (bank.some(t => t.id === themeId)) {
+                showToast('⚠️ Theme already in bank', '⚠️');
+                return;
+            }
+
+            if (bank.length >= MAX_BANK_THEMES) {
+                showToast(`❌ Bank is full! Maximum ${MAX_BANK_THEMES} themes allowed`, '❌');
+                return;
+            }
+
+            bank.push({
+                id: themeId,
+                name: themeName,
+                question_count: questionCount,
+                created_by: createdBy
+            });
+
+            localStorage.setItem('themeBank', JSON.stringify(bank));
+            console.log(`✅ Theme added! Bank now has ${bank.length}/${MAX_BANK_THEMES} themes:`, bank);
+            showToast(`✅ ${themeName} added to bank (${bank.length}/${MAX_BANK_THEMES})`, '💾');
+
+            // Update availableThemes array
+            availableThemes = bank;
+
+            // Update bank count display
+            const bankCountEl = document.getElementById('bankCount');
+            if (bankCountEl) {
+                bankCountEl.textContent = `(${bank.length}/10)`;
+            }
+
+            // Auto-refresh search results immediately
+            const searchInput = document.getElementById('themeSearch');
+            if (searchInput && searchInput.value) {
+                console.log('🔄 Auto-refreshing search results...');
+                // Clear timeout to trigger immediate refresh
+                clearTimeout(searchTimeout);
+                searchDatabaseThemes(searchInput.value);
+            }
+        }
+
+        function removeThemeFromBank(themeId, themeName) {
+            console.log(`🗑️ Removing theme from bank:`, { themeId, themeName });
+            const bank = getThemeBank();
+            const filtered = bank.filter(t => t.id !== themeId);
+
+            if (filtered.length === bank.length) {
+                showToast('⚠️ Theme not found in bank', '⚠️');
+                return;
+            }
+
+            localStorage.setItem('themeBank', JSON.stringify(filtered));
+            console.log(`✅ Theme removed! Bank now has ${filtered.length}/${MAX_BANK_THEMES} themes:`, filtered);
+            showToast(`🗑️ ${themeName} removed from bank (${filtered.length}/${MAX_BANK_THEMES})`, '🗑️');
+
+            // Update availableThemes array
+            availableThemes = filtered;
+
+            // Update bank count display
+            const bankCountEl = document.getElementById('bankCount');
+            if (bankCountEl) {
+                bankCountEl.textContent = `(${filtered.length}/10)`;
+            }
+
+            // Auto-refresh search results immediately
+            const searchInput = document.getElementById('themeSearch');
+            if (searchInput && searchInput.value) {
+                console.log('🔄 Auto-refreshing search results after removal...');
+                // Clear timeout to trigger immediate refresh
+                clearTimeout(searchTimeout);
+                searchDatabaseThemes(searchInput.value);
+            } else {
+                // If no search term, reload bank themes
+                loadThemesNoCache();
             }
         }
 
@@ -1953,9 +2352,128 @@ Examples:
             loadThemesNoCache();
         }
 
+        // Game Mode Functions
+        function setGameMode(mode) {
+            // Update button states
+            document.querySelectorAll('.game-mode-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
+
+            // Save to localStorage
+            localStorage.setItem('gameMode', mode);
+
+            console.log(`Game mode set to: ${mode}`);
+            showToast(`Game mode: ${mode === 'both' ? 'Both' : mode === 'r-v' ? 'Reference → Verse' : 'Verse → Reference'}`, '🎮');
+        }
+
+        function loadGameMode() {
+            const savedMode = localStorage.getItem('gameMode') || 'both';
+            document.querySelectorAll('.game-mode-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            const modeBtn = document.querySelector(`[data-mode="${savedMode}"]`);
+            if (modeBtn) {
+                modeBtn.classList.add('active');
+            }
+        }
+
+        async function saveSettingsManually() {
+            const saveBtn = document.getElementById('saveBtn');
+            const originalText = saveBtn.innerHTML;
+
+            try {
+                // Show saving state
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<span>💾 Saving...</span>';
+
+                // Get selected themes
+                const selectedThemes = [];
+                document.querySelectorAll('.theme-card.active').forEach(chip => {
+                    selectedThemes.push(parseInt(chip.dataset.themeId));
+                });
+
+                if (selectedThemes.length === 0) {
+                    showToast('⚠️ Please select at least one theme!', '⚙️');
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = originalText;
+                    return;
+                }
+
+                // Save to localStorage
+                localStorage.setItem('selectedThemes', JSON.stringify(selectedThemes));
+                localStorage.setItem('quizSettings', JSON.stringify({
+                    timeLimit: currentTime,
+                    questionCount: currentQuestions
+                }));
+
+                // Save to database if logged in
+                const token = localStorage.getItem('token');
+                if (token) {
+                    try {
+                        const response = await fetch('/api/auth/preferences', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify({
+                                selected_themes: selectedThemes,
+                                quiz_time_limit: currentTime,
+                                quiz_question_count: currentQuestions
+                            })
+                        });
+
+                        if (response.ok) {
+                            saveBtn.innerHTML = '<span>✅ Saved!</span>';
+                            showToast('✅ Settings saved successfully!', '💾');
+                        } else if (response.status === 401) {
+                            // Token expired or invalid - clear it and save locally
+                            localStorage.removeItem('token');
+                            saveBtn.innerHTML = '<span>✅ Saved!</span>';
+                            showToast('✅ Settings saved locally (session expired)', '💾');
+                        } else {
+                            // Other error - still saved locally
+                            saveBtn.innerHTML = '<span>✅ Saved!</span>';
+                            showToast('✅ Settings saved locally', '💾');
+                        }
+                    } catch (fetchError) {
+                        // Network error - still saved locally
+                        console.warn('Could not sync to database:', fetchError);
+                        saveBtn.innerHTML = '<span>✅ Saved!</span>';
+                        showToast('✅ Settings saved locally', '💾');
+                    }
+                } else {
+                    // No token - check if user exists but token expired
+                    const user = localStorage.getItem('user');
+                    if (user) {
+                        // User exists but no token - probably expired
+                        saveBtn.innerHTML = '<span>✅ Saved!</span>';
+                        showToast('✅ Settings saved locally (please log in again to sync)', '💾');
+                    } else {
+                        // Guest user - only localStorage
+                        saveBtn.innerHTML = '<span>✅ Saved!</span>';
+                        showToast('✅ Settings saved (local only - login to sync across devices)', '💾');
+                    }
+                }
+
+                // Reset button after 2 seconds
+                setTimeout(() => {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = originalText;
+                }, 2000);
+
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                showToast('❌ Failed to save settings. Please try again.', '⚠️');
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalText;
+            }
+        }
+
         function startQuiz() {
             const selectedThemes = [];
-            document.querySelectorAll('.theme-card.active').forEach(chip => selectedThemes.push(chip.dataset.themeName));
+            document.querySelectorAll('.theme-card.active').forEach(chip => selectedThemes.push(parseInt(chip.dataset.themeId)));
             if (selectedThemes.length === 0) { 
                 alert('⚙  Please select at least one theme!'); 
                 return; 
@@ -2293,16 +2811,29 @@ Examples:
         }
 
         async function saveTheme() {
+            console.log('� saveTheme: Starting public theme creation...');
+            
             const themeName = normalizeToUTF8(document.getElementById('themeName').value.trim());
             const entries = Array.from(document.querySelectorAll('.verse-entry'))
                 .map(e => {
                     const inputs = e.querySelectorAll('.form-input');
-                    return { 
-                        reference: normalizeToUTF8(inputs[0]?.value.trim() || ''), 
-                        text: normalizeToUTF8(inputs[1]?.value.trim() || '') 
+                    return {
+                        reference: normalizeToUTF8(inputs[0]?.value.trim() || ''),
+                        text: normalizeToUTF8(inputs[1]?.value.trim() || '')
                     };
                 })
-                .filter(v => v.reference.length >= 3 && v.text.length >= 5);
+                .filter(v => {
+                    // Basic length check (increased text minimum from 5 to 10)
+                    if (v.reference.length < 3 || v.text.length < 10) return false;
+
+                    // Reject if text is same as reference (reference-only entry)
+                    if (v.text === v.reference) {
+                        console.warn(`Skipping reference-only verse: ${v.reference}`);
+                        return false;
+                    }
+
+                    return true;
+                });
 
             if (!themeName || themeName.length < 3) {
                 alert('Please provide a theme name (at least 3 characters).');
@@ -2320,40 +2851,46 @@ Examples:
             saveBtn.textContent = '⏳ Saving...';
 
             try {
-                const token = localStorage.getItem('token') || localStorage.getItem('guestToken');
-                const headers = { 'Content-Type': 'application/json' };
-                if (token) headers['Authorization'] = `Bearer ${token}`;
-
+                console.log(`📤 saveTheme: Posting ${entries.length} verses to /api/themes`);
+                
                 const response = await fetch('/api/themes', {
                     method: 'POST',
-                    headers,
+                    headers: { 
+                        'Content-Type': 'application/json'
+                    },
                     body: JSON.stringify({
                         name: themeName,
                         verses: entries
                     })
                 });
 
+                console.log(`📥 saveTheme: Response status: ${response.status}`);
+
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
-                    throw new Error(errorData.error || `Failed to save: ${response.statusText}`);
+                    const errorMsg = errorData.error || `Failed to save: ${response.statusText}`;
+                    console.error('❌ API Error:', errorMsg);
+                    throw new Error(errorMsg);
                 }
 
                 const result = await response.json();
-                console.log('Theme saved successfully:', result);
+                console.log('✅ Theme saved successfully:', result);
+                console.log(`📊 Verses created: ${result.verses_created}/${result.total_verses}`);
                 
-                showToast(`Theme "${themeName}" created!`, '✨');
+                showToast(`Theme "${themeName}" created! (${result.verses_created} verses)`, '✨');
                 closeThemeCreator();
                 
-                // Wait longer for database to sync and then refresh
-                console.log('Refreshing theme list...');
-                setTimeout(async () => {
-                    console.log('Calling refreshThemes()');
-                    await refreshThemes();
-                    console.log('Theme list refreshed');
-                }, 1000);
+                // Wait for database to sync before refreshing
+                console.log('⏱️ Waiting 1.5s for database sync...');
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                console.log('🔄 Calling refreshThemes()');
+                await refreshThemes();
+                console.log('✅ Theme list refreshed');
             } catch (error) {
-                console.error('Error saving theme:', error);
-                alert(`Failed to save theme: ${error.message}`);
+                console.error('❌ Error saving theme:', error);
+                const msg = error.message || 'Unknown error';
+                alert(`Failed to save theme: ${msg}`);
                 saveBtn.disabled = false;
                 saveBtn.textContent = originalText;
             }
@@ -2400,9 +2937,81 @@ Examples:
             });
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
+        function showToast(message, icon = '✅') {
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: rgba(0,0,0,0.9);
+                color: white;
+                padding: 15px 20px;
+                border-radius: 10px;
+                z-index: 10000;
+                animation: slideIn 0.3s ease;
+            `;
+            toast.textContent = `${icon} ${message}`;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        async function loadPreferencesFromDatabase() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                // Guest user - use localStorage only
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/auth/preferences', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        // Update localStorage with database values
+                        localStorage.setItem('selectedThemes', JSON.stringify(data.selected_themes || []));
+
+                        // Update quiz settings
+                        currentTime = data.quiz_time_limit || 30;
+                        currentQuestions = data.quiz_question_count || 10;
+
+                        localStorage.setItem('quizSettings', JSON.stringify({
+                            timeLimit: currentTime,
+                            questionCount: currentQuestions
+                        }));
+
+                        // Update UI
+                        document.getElementById('timeValue').textContent = currentTime + 's';
+                        document.getElementById('questionValue').textContent = currentQuestions;
+
+                        console.log('Loaded preferences from database:', data);
+                    }
+                }
+            } catch (error) {
+                console.warn('Failed to load preferences from database, using localStorage:', error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Debug: Show localStorage state on page load
+            console.log('⚙️ Settings page loaded');
+            console.log('🔑 Token:', localStorage.getItem('token'));
+            console.log('👤 User:', localStorage.getItem('user'));
+
             createParticles();
+            await loadPreferencesFromDatabase(); // Load from DB first
+            await loadAllDatabaseThemes(); // Load all themes for search
             loadThemes();
+            loadGameMode(); // Load saved game mode
             addVerseEntry();
             setupFileDrop();
             

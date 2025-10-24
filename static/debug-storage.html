@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Storage Debug</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        pre {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px 5px;
+            border: none;
+            border-radius: 5px;
+            background: #4caf50;
+            color: white;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Storage Debugger</h1>
+    <button onclick="checkStorage()">Check Storage</button>
+    <button onclick="checkDatabase()">Check Database</button>
+    <button onclick="addTestTheme()">Add Test Theme (ID: 1)</button>
+    <button onclick="clearStorage()">Clear Storage</button>
+    
+    <h2>localStorage:</h2>
+    <pre id="localStorageOutput">Click "Check Storage" to see data</pre>
+    
+    <h2>Database:</h2>
+    <pre id="databaseOutput">Click "Check Database" to see data</pre>
+
+    <script>
+        function checkStorage() {
+            const selectedThemes = localStorage.getItem('selectedThemes');
+            const quizSettings = localStorage.getItem('quizSettings');
+            const token = localStorage.getItem('token');
+            
+            const output = {
+                selectedThemes: selectedThemes ? JSON.parse(selectedThemes) : null,
+                quizSettings: quizSettings ? JSON.parse(quizSettings) : null,
+                hasToken: !!token
+            };
+            
+            document.getElementById('localStorageOutput').textContent = JSON.stringify(output, null, 2);
+        }
+        
+        async function checkDatabase() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                document.getElementById('databaseOutput').textContent = 'Not logged in - no token found';
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/auth/preferences', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                document.getElementById('databaseOutput').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('databaseOutput').textContent = 'Error: ' + error.message;
+            }
+        }
+        
+        function addTestTheme() {
+            const selectedThemes = JSON.parse(localStorage.getItem('selectedThemes') || '[]');
+            if (!selectedThemes.includes(1)) {
+                selectedThemes.push(1);
+            }
+            localStorage.setItem('selectedThemes', JSON.stringify(selectedThemes));
+            alert('Added theme ID 1. Now check storage again!');
+            checkStorage();
+        }
+        
+        function clearStorage() {
+            if (confirm('Clear all quiz settings and themes from localStorage?')) {
+                localStorage.removeItem('selectedThemes');
+                localStorage.removeItem('quizSettings');
+                alert('Cleared! Check storage again.');
+                checkStorage();
+            }
+        }
+    </script>
+</body>
+</html>

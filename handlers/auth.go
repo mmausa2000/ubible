@@ -152,7 +152,7 @@ func Login(c *fiber.Ctx) error {
 	}
 
 	var user models.User
-	if err := db.Where("username = ? AND is_guest = ?", req.Username, false).First(&user).Error; err != nil {
+	if err := db.Where("LOWER(username) = LOWER(?) AND is_guest = ?", req.Username, false).First(&user).Error; err != nil {
 		return c.Status(401).JSON(AuthResponse{
 			Success: false,
 			Error:   "Invalid credentials",
@@ -311,10 +311,18 @@ func UpgradeGuest(c *fiber.Ctx) error {
 		})
 	}
 
-	if req.Username == "" || req.Password == "" {
+	// Validate input - align with Register requirements
+	if req.Username == "" || req.Password == "" || req.Email == "" {
 		return c.Status(400).JSON(AuthResponse{
 			Success: false,
-			Error:   "Username and password required",
+			Error:   "Username, email, and password are required",
+		})
+	}
+
+	if len(req.Password) < 6 {
+		return c.Status(400).JSON(AuthResponse{
+			Success: false,
+			Error:   "Password must be at least 6 characters",
 		})
 	}
 
@@ -352,6 +360,15 @@ func UpgradeGuest(c *fiber.Ctx) error {
 		})
 	}
 
+	// Check if email already exists
+	var emailUser models.User
+	if err := db.Where("email = ? AND id != ?", req.Email, userID).First(&emailUser).Error; err == nil {
+		return c.Status(400).JSON(AuthResponse{
+			Success: false,
+			Error:   "Email already in use",
+		})
+	}
+
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -361,17 +378,18 @@ func UpgradeGuest(c *fiber.Ctx) error {
 		})
 	}
 
-	// Update user
-	if err := db.Model(&user).Updates(map[string]interface{}{
-		"username":   req.Username,
-		"email":      req.Email,
-		"password":   string(hashedPassword),
-		"is_guest":   false,
-		"updated_at": time.Now(),
-	}).Error; err != nil {
+	// Update user - use Save() instead of Updates() to handle unique email constraint
+	user.Username = req.Username
+	user.Email = &req.Email
+	user.Password = string(hashedPassword)
+	user.IsGuest = false
+
+	if err := db.Save(&user).Error; err != nil {
+		// Log the actual error for debugging
+		fmt.Printf("Database error during upgrade: %v\n", err)
 		return c.Status(500).JSON(AuthResponse{
 			Success: false,
-			Error:   "Failed to upgrade account",
+			Error:   "Failed to upgrade account. Please try again or contact support.",
 		})
 	}
 

@@ -322,8 +322,9 @@ func GetQuizQuestions(c *fiber.Ctx) error {
 		query = query.Where("difficulty = ?", difficulty)
 	}
 
+	// Don't limit initially - we need to know total available
 	var questions []models.Question
-	if err := query.Limit(count).Find(&questions).Error; err != nil {
+	if err := query.Find(&questions).Error; err != nil {
 		log.Printf("Error fetching quiz questions: %v", err)
 		return c.Status(500).JSON(fiber.Map{"success": false, "error": "Failed to fetch questions"})
 	}
@@ -380,7 +381,46 @@ func GetQuizQuestions(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"success": false, "error": "No questions available for the selected criteria"})
 	}
 
+	// Smart repetition: if user requests more questions than available, repeat to fill gap
+	finalVerses := verses
+	if count > len(verses) {
+		available := len(verses)
+		needed := count - available
+		log.Printf("📚 Quiz: Requested %d questions, only %d available. Repeating %d questions.", count, available, needed)
+
+		// Create repeat pool and shuffle it
+		repeatPool := make([]VerseResponse, len(verses))
+		copy(repeatPool, verses)
+		rand.Shuffle(len(repeatPool), func(i, j int) {
+			repeatPool[i], repeatPool[j] = repeatPool[j], repeatPool[i]
+		})
+
+		// Add repeated questions to fill the gap
+		for i := 0; i < needed && i < len(repeatPool); i++ {
+			finalVerses = append(finalVerses, repeatPool[i])
+		}
+
+		// If still need more (very small theme), loop through again
+		for len(finalVerses) < count && len(repeatPool) > 0 {
+			idx := len(finalVerses) % len(repeatPool)
+			finalVerses = append(finalVerses, repeatPool[idx])
+		}
+
+		// Shuffle to mix original and repeated questions
+		rand.Shuffle(len(finalVerses), func(i, j int) {
+			finalVerses[i], finalVerses[j] = finalVerses[j], finalVerses[i]
+		})
+
+		log.Printf("✅ Quiz: Returning %d questions (%d original + %d repeated)", len(finalVerses), available, len(finalVerses)-available)
+	} else {
+		// Shuffle and limit to requested count
+		rand.Shuffle(len(finalVerses), func(i, j int) {
+			finalVerses[i], finalVerses[j] = finalVerses[j], finalVerses[i]
+		})
+		finalVerses = finalVerses[:count]
+	}
+
 	c.Set("Content-Type", "application/json; charset=utf-8")
 	c.Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
-	return c.JSON(fiber.Map{"success": true, "verses": verses, "count": len(verses)})
+	return c.JSON(fiber.Map{"success": true, "verses": finalVerses, "count": len(finalVerses)})
 }

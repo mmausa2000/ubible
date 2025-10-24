@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>U Bible - Debugger</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 50%, #16213e 100%);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .app-container {
+            width: 95%;
+            max-width: 1400px;
+            height: 90vh;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: grid;
+            grid-template-rows: 70px 1fr;
+            overflow: hidden;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Header / Navigation */
+        .header {
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 25px;
+            gap: 30px;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-text {
+            color: white;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            flex: 1;
+            justify-content: center;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .tab:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .tab.active {
+            background: rgba(76, 175, 80, 0.2);
+            border-color: rgba(76, 175, 80, 0.4);
+            color: #4CAF50;
+        }
+
+        .nav-btn {
+            padding: 10px 20px;
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.4);
+            border-radius: 12px;
+            color: #4CAF50;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-btn:hover {
+            background: rgba(76, 175, 80, 0.3);
+            transform: translateY(-2px);
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 15px;
+            padding: 15px;
+            overflow: hidden;
+            height: 100%;
+        }
+
+        /* Left Panel - Stats & Controls */
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 15px;
+        }
+
+        .panel-title {
+            color: white;
+            font-size: 1em;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Rating Display */
+        .rating-display {
+            background: linear-gradient(135deg, #4CAF50 0%, #2e7d32 100%);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        .rating-value {
+            font-size: 3em;
+            font-weight: bold;
+            color: white;
+        }
+
+        .rating-label {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .stat-item {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-label {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.75em;
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            color: white;
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-top: 3px;
+        }
+
+        /* Test Buttons */
+        .test-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .test-btn {
+            padding: 12px;
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            border-radius: 10px;
+            color: #4CAF50;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .test-btn:hover {
+            background: rgba(76, 175, 80, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .test-btn small {
+            display: block;
+            font-size: 0.8em;
+            opacity: 0.8;
+            margin-top: 3px;
+        }
+
+        .difficulty-btns {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .difficulty-btn {
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.8em;
+        }
+
+        .difficulty-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .difficulty-btn.active {
+            background: rgba(76, 175, 80, 0.3);
+            border-color: #4CAF50;
+            color: #4CAF50;
+        }
+
+        /* Control Buttons */
+        .controls {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            justify-content: center;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.85em;
+        }
+
+        .btn-primary {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-copy {
+            padding: 6px 12px;
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.4);
+            border-radius: 6px;
+            color: #4CAF50;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.8em;
+        }
+
+        .btn-copy:hover {
+            background: rgba(76, 175, 80, 0.3);
+        }
+
+        .btn-copy.copied {
+            background: #4CAF50;
+            color: white;
+        }
+
+        /* Right Panel - Activity Log */
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .log-container {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 15px;
+            overflow-y: auto;
+            flex: 1;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8em;
+        }
+
+        .log-entry {
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            border-left: 3px solid #4CAF50;
+            background: rgba(255, 255, 255, 0.03);
+            line-height: 1.5;
+        }
+
+        .log-entry.success {
+            border-left-color: #4caf50;
+        }
+
+        .log-entry.error {
+            border-left-color: #f44336;
+            background: rgba(244, 67, 54, 0.05);
+        }
+
+        .log-entry.warning {
+            border-left-color: #ff9800;
+        }
+
+        .log-entry.rating {
+            border-left-color: #ffd700;
+            background: rgba(255, 215, 0, 0.05);
+        }
+
+        .timestamp {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.85em;
+        }
+
+        .log-type {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.75em;
+            font-weight: bold;
+            margin: 0 6px;
+        }
+
+        .log-type.success {
+            background: #4caf50;
+            color: white;
+        }
+
+        .log-type.error {
+            background: #f44336;
+            color: white;
+        }
+
+        .log-type.info {
+            background: #2196f3;
+            color: white;
+        }
+
+        .log-type.rating {
+            background: #ffd700;
+            color: #333;
+        }
+
+        .log-message {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .json-view {
+            background: rgba(0, 0, 0, 0.3);
+            color: #4CAF50;
+            padding: 8px;
+            border-radius: 4px;
+            margin-top: 6px;
+            font-size: 0.85em;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .change-positive {
+            color: #4caf50;
+            font-weight: bold;
+        }
+
+        .change-negative {
+            color: #f44336;
+            font-weight: bold;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4caf50;
+            box-shadow: 0 0 10px #4caf50;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.disconnected {
+            background: #f44336;
+            box-shadow: 0 0 10px #f44336;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* WebSocket Controls */
+        .ws-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+
+        .ws-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #f44336;
+            box-shadow: 0 0 10px #f44336;
+        }
+
+        .ws-indicator.connected {
+            background: #4caf50;
+            box-shadow: 0 0 10px #4caf50;
+        }
+
+        .ws-text {
+            color: white;
+            font-size: 0.9em;
+        }
+
+        .room-input {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: white;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+
+        .room-input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(76, 175, 80, 0.3);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(76, 175, 80, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header with Navigation -->
+        <div class="header">
+            <div class="logo-area">
+                <div class="logo-text">🔧 U Bible Debugger</div>
+            </div>
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('singleplayer')">🎮 Single Player</div>
+                <div class="tab" onclick="switchTab('multiplayer')">🌐 Multiplayer</div>
+                <div class="tab" onclick="switchTab('gameurls')">🔗 Game URLs</div>
+            </div>
+            <a href="/" class="nav-btn">
+                ← Back to Home
+            </a>
+        </div>
+
+        <!-- Single Player Tab -->
+        <div id="singleplayer-tab" class="tab-content active">
+            <!-- Left Panel -->
+            <div class="left-panel">
+                <!-- Current Stats -->
+                <div class="panel">
+                    <div class="panel-title">📊 Current Stats</div>
+                    <div class="rating-display">
+                        <div class="rating-label">Rating (ELO)</div>
+                        <div class="rating-value" id="currentRating">--</div>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-label">Level</div>
+                            <div class="stat-value" id="currentLevel">--</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">XP</div>
+                            <div class="stat-value" id="currentXP">--</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Games</div>
+                            <div class="stat-value" id="totalGames">--</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Win Rate</div>
+                            <div class="stat-value" id="winRate">--</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test Game Simulator -->
+                <div class="panel">
+                    <div class="panel-title">🎮 Simulate Games</div>
+                    <button class="btn btn-primary" style="width: 100%; margin-bottom: 10px;" onclick="toggleAllGames()">
+                        ⚡ Run All Tests
+                    </button>
+                    <div class="test-buttons">
+                        <div class="test-btn" onclick="simulateGame('perfect')">
+                            🏆 Perfect<br><small>100% accuracy</small>
+                        </div>
+                        <div class="test-btn" onclick="simulateGame('good-win')">
+                            ✅ Good Win<br><small>90-95%</small>
+                        </div>
+                        <div class="test-btn" onclick="simulateGame('lucky-win')">
+                            🍀 Lucky Win<br><small>70-89%</small>
+                        </div>
+                        <div class="test-btn" onclick="simulateGame('close-loss')">
+                            😔 Close Loss<br><small>90%+ loss</small>
+                        </div>
+                        <div class="test-btn" onclick="simulateGame('bad-loss')">
+                            ❌ Bad Loss<br><small>50-70%</small>
+                        </div>
+                        <div class="test-btn" onclick="simulateGame('quit')">
+                            🚫 Quit<br><small>-0.2 penalty</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Difficulty -->
+                <div class="panel">
+                    <div class="panel-title">⚙️ Difficulty</div>
+                    <div class="difficulty-btns">
+                        <div class="difficulty-btn" onclick="setDifficulty('easy')">
+                            Easy<br><small>20s/10q</small>
+                        </div>
+                        <div class="difficulty-btn active" onclick="setDifficulty('medium')">
+                            Medium<br><small>10s/20q</small>
+                        </div>
+                        <div class="difficulty-btn" onclick="setDifficulty('hard')">
+                            Hard<br><small>5s/30q</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Controls -->
+                <div class="panel">
+                    <div class="controls">
+                        <button class="btn btn-primary" onclick="loadUserStats()">🔄 Refresh</button>
+                        <button class="btn btn-secondary" onclick="clearLogs('sp')">🗑️ Clear</button>
+                    </div>
+                    <button class="btn btn-primary" style="width: 100%; margin-top: 8px;" onclick="exportLogs('sp', 'json')">💾 Export Logs</button>
+                </div>
+            </div>
+
+            <!-- Right Panel - Activity Log -->
+            <div class="right-panel">
+                <div class="panel" style="display: flex; flex-direction: column; height: 100%;">
+                    <div class="log-header">
+                        <div class="panel-title">
+                            📝 Activity Log <span class="status-indicator"></span>
+                        </div>
+                        <button class="btn-copy" onclick="copyActivityLog('sp')">📋 Copy</button>
+                    </div>
+                    <div class="log-container" id="spActivityLog">
+                        <div class="log-entry info">
+                            <span class="timestamp">[Waiting...]</span>
+                            <span class="log-type info">INFO</span>
+                            <span class="log-message">Single Player debugger ready.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Multiplayer Tab -->
+        <div id="multiplayer-tab" class="tab-content">
+            <!-- Left Panel -->
+            <div class="left-panel">
+                <!-- WebSocket Status -->
+                <div class="panel">
+                    <div class="panel-title">🌐 WebSocket Status</div>
+                    <div class="ws-status">
+                        <div class="ws-indicator" id="wsIndicator"></div>
+                        <div class="ws-text" id="wsStatus">Disconnected</div>
+                    </div>
+                    <div class="stats-grid" style="margin: 10px 0;">
+                        <div class="stat-item">
+                            <div class="stat-label">Latency</div>
+                            <div class="stat-value" id="latencyValue">--</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Health</div>
+                            <div class="stat-value" id="healthValue">100%</div>
+                        </div>
+                    </div>
+                    <div class="controls">
+                        <button class="btn btn-primary" onclick="connectWebSocket()">🔌 Connect</button>
+                        <button class="btn btn-secondary" onclick="disconnectWebSocket()">🔌 Disconnect</button>
+                    </div>
+                </div>
+
+                <!-- Room Controls -->
+                <div class="panel">
+                    <div class="panel-title">🚪 Room Actions</div>
+                    <button class="btn btn-primary" style="width: 100%; margin-bottom: 8px;" onclick="createRoom()">
+                        ➕ Create Room
+                    </button>
+                    <input type="text" class="room-input" id="roomCodeInput" placeholder="Enter room code...">
+                    <button class="btn btn-primary" style="width: 100%;" onclick="joinRoom()">
+                        🚪 Join Room
+                    </button>
+                </div>
+
+                <!-- Player Actions -->
+                <div class="panel">
+                    <div class="panel-title">👤 Player Actions</div>
+                    <button class="btn btn-primary" style="width: 100%; margin-bottom: 10px;" onclick="runAllMultiplayerTests()">
+                        ⚡ Run All Tests
+                    </button>
+                    <div class="test-buttons">
+                        <div class="test-btn" onclick="sendReady()">
+                            ✓ Ready
+                        </div>
+                        <div class="test-btn" onclick="startGame()">
+                            ▶️ Start Game
+                        </div>
+                        <div class="test-btn" onclick="leaveRoom()">
+                            🚪 Leave Room
+                        </div>
+                        <div class="test-btn" onclick="findMatch()">
+                            🔍 Find Match
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Room Info -->
+                <div class="panel">
+                    <div class="panel-title">📊 Room Info</div>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-label">Room Code</div>
+                            <div class="stat-value" id="roomCode">--</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Players</div>
+                            <div class="stat-value" id="playerCount">0</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Status</div>
+                            <div class="stat-value" id="roomStatus">--</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Role</div>
+                            <div class="stat-value" id="playerRole">--</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Controls -->
+                <div class="panel">
+                    <div class="controls">
+                        <button class="btn btn-primary" onclick="exportLogs('mp', 'json')">💾 Export JSON</button>
+                        <button class="btn btn-secondary" onclick="clearLogs('mp')">🗑️ Clear</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel - Activity Log -->
+            <div class="right-panel">
+                <div class="panel" style="display: flex; flex-direction: column; height: 100%;">
+                    <div class="log-header">
+                        <div class="panel-title">
+                            📝 WebSocket Log <span class="status-indicator disconnected" id="wsLogIndicator"></span>
+                        </div>
+                        <button class="btn-copy" onclick="copyActivityLog('mp')">📋 Copy</button>
+                    </div>
+                    <div class="log-container" id="mpActivityLog">
+                        <div class="log-entry info">
+                            <span class="timestamp">[Waiting...]</span>
+                            <span class="log-type info">INFO</span>
+                            <span class="log-message">Multiplayer debugger ready. Click Connect to start.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Single Player Variables
+        let currentDifficulty = {
+            timeLimit: 10,
+            questionCount: 20,
+            label: 'Medium'
+        };
+
+        // Multiplayer Variables
+        let ws = null;
+        let currentPlayerId = null;
+        let currentRoomCode = null;
+        let isHost = false;
+        let reconnectAttempts = 0;
+        let maxReconnectAttempts = 5;
+        let reconnectTimeout = null;
+        let pingInterval = null;
+        let lastPingTime = null;
+        let currentLatency = 0;
+        let connectionHealth = 100;
+
+        // Initialize
+        window.addEventListener('DOMContentLoaded', () => {
+            loadUserStats();
+            logSP('info', 'Debugger loaded successfully');
+        });
+
+        // Tab Switching
+        function switchTab(tab) {
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+
+            // Activate clicked tab
+            event.target.classList.add('active');
+            document.getElementById(`${tab}-tab`).classList.add('active');
+        }
+
+        // ===== SINGLE PLAYER FUNCTIONS =====
+
+        async function loadUserStats() {
+            try {
+                const token = localStorage.getItem('authToken');
+                if (!token) {
+                    logSP('error', 'No auth token found. Please log in first.');
+                    return;
+                }
+
+                const response = await fetch('/api/users/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const data = await response.json();
+                if (data.success && data.user) {
+                    updateStatsDisplay(data.user);
+                    logSP('success', 'Stats loaded successfully');
+                }
+            } catch (error) {
+                logSP('error', `Error loading stats: ${error.message}`);
+            }
+        }
+
+        function updateStatsDisplay(user) {
+            document.getElementById('currentRating').textContent = user.rating?.toFixed(1) || '5.0';
+            document.getElementById('currentLevel').textContent = user.level || 1;
+            document.getElementById('currentXP').textContent = user.xp || 0;
+            document.getElementById('totalGames').textContent = user.total_games || 0;
+
+            const winRate = user.total_games > 0
+                ? ((user.wins / user.total_games) * 100).toFixed(1)
+                : '0.0';
+            document.getElementById('winRate').textContent = winRate + '%';
+        }
+
+        async function simulateGame(gameType) {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                logSP('error', 'No auth token. Please log in first.');
+                return;
+            }
+
+            logSP('info', `Simulating ${gameType} game...`);
+            const gameRequest = buildGameRequest(gameType);
+
+            try {
+                const response = await fetch('/api/games/record', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(gameRequest)
+                });
+
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const result = await response.json();
+                if (result.success) {
+                    handleGameResult(gameType, gameRequest, result);
+                    await loadUserStats();
+                }
+            } catch (error) {
+                logSP('error', `Error: ${error.message}`);
+            }
+        }
+
+        function buildGameRequest(gameType) {
+            const { timeLimit, questionCount } = currentDifficulty;
+            const baseRequest = {
+                theme_id: 1,
+                time_limit: timeLimit,
+                total_questions: questionCount,
+                time_elapsed: Math.floor(Math.random() * 100) + 50,
+                is_multiplayer: false,
+                difficulty: timeLimit === 5 ? 'hard' : (timeLimit === 10 ? 'medium' : 'easy')
+            };
+
+            const configs = {
+                'perfect': { percent: 1.0, fast: 0.8, won: true, perfect: true },
+                'good-win': { percent: 0.93, fast: 0.5, won: true, perfect: false },
+                'lucky-win': { percent: 0.78, fast: 0.3, won: true, perfect: false },
+                'close-loss': { percent: 0.92, fast: 0.4, won: false, perfect: false },
+                'bad-loss': { percent: 0.6, fast: 0.2, won: false, perfect: false },
+                'quit': { percent: 0.5, fast: 0, won: false, perfect: false, quit: true }
+            };
+
+            const config = configs[gameType];
+            const correct = Math.floor(questionCount * config.percent);
+
+            return {
+                ...baseRequest,
+                score: correct * 100,
+                correct_answers: correct,
+                fast_answers: Math.floor(correct * config.fast),
+                won: config.won,
+                is_perfect: config.perfect,
+                did_quit: config.quit || false
+            };
+        }
+
+        function handleGameResult(gameType, request, result) {
+            const ratingChange = result.rating_change || 0;
+            const changeClass = ratingChange >= 0 ? 'change-positive' : 'change-negative';
+            const changeSymbol = ratingChange >= 0 ? '↑' : '↓';
+
+            logSP('rating',
+                `🎯 ${gameType.toUpperCase()}: Rating ${result.rating?.toFixed(1)} ` +
+                `<span class="${changeClass}">${changeSymbol} ${Math.abs(ratingChange).toFixed(2)}</span>`
+            );
+
+            logSP('success',
+                `+${result.xp_earned} XP, +${result.faith_points} FP | ` +
+                `${((request.correct_answers / request.total_questions) * 100).toFixed(0)}% accuracy`
+            );
+        }
+
+        function setDifficulty(level) {
+            document.querySelectorAll('.difficulty-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            event.target.classList.add('active');
+
+            const configs = {
+                'easy': { timeLimit: 20, questionCount: 10 },
+                'medium': { timeLimit: 10, questionCount: 20 },
+                'hard': { timeLimit: 5, questionCount: 30 }
+            };
+
+            currentDifficulty = { ...configs[level], label: level };
+            logSP('info', `Difficulty: ${level} (${configs[level].timeLimit}s, ${configs[level].questionCount}q)`);
+        }
+
+        async function toggleAllGames() {
+            const gameTypes = ['perfect', 'good-win', 'lucky-win', 'close-loss', 'bad-loss', 'quit'];
+
+            logSP('info', '⚡ Running all 6 game tests sequentially...');
+
+            for (const gameType of gameTypes) {
+                await simulateGame(gameType);
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            logSP('success', '✅ All tests completed! Check stats above.');
+        }
+
+        // ===== MULTIPLAYER FUNCTIONS =====
+
+        function connectWebSocket(isReconnect = false) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                logMP('warning', 'Already connected to WebSocket');
+                return;
+            }
+
+            const playerId = localStorage.getItem('userId') || `player_${Date.now()}`;
+            const username = localStorage.getItem('playerName') || 'TestPlayer';
+
+            if (isReconnect) {
+                logMP('info', `🔄 Reconnect attempt ${reconnectAttempts + 1}/${maxReconnectAttempts}...`);
+            } else {
+                logMP('info', `Connecting to WebSocket as ${username}...`);
+            }
+
+            ws = new WebSocket(`ws://localhost:3000/ws?player_id=${playerId}&username=${username}`);
+
+            ws.onopen = () => {
+                reconnectAttempts = 0;
+                logMP('success', '✅ WebSocket connected');
+                updateWSStatus(true);
+                startHealthMonitoring();
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+
+                    // Handle pong for latency measurement
+                    if (data.type === 'pong') {
+                        const latency = Date.now() - lastPingTime;
+                        currentLatency = latency;
+                        updateLatency(latency);
+                        updateConnectionHealth(latency);
+                        return;
+                    }
+
+                    handleWSMessage(data);
+                } catch (error) {
+                    logMP('error', `Error parsing message: ${error.message}`);
+                }
+            };
+
+            ws.onerror = (error) => {
+                logMP('error', '❌ WebSocket error occurred');
+                updateWSStatus(false);
+            };
+
+            ws.onclose = () => {
+                logMP('info', '🔌 WebSocket disconnected');
+                updateWSStatus(false);
+                stopHealthMonitoring();
+                attemptReconnect();
+            };
+        }
+
+        function attemptReconnect() {
+            if (reconnectAttempts < maxReconnectAttempts) {
+                reconnectAttempts++;
+                const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 10000);
+                logMP('warning', `Reconnecting in ${delay/1000}s...`);
+                reconnectTimeout = setTimeout(() => connectWebSocket(true), delay);
+            } else {
+                logMP('error', `Failed to reconnect after ${maxReconnectAttempts} attempts`);
+            }
+        }
+
+        function startHealthMonitoring() {
+            // Send ping every 5 seconds
+            pingInterval = setInterval(() => {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    lastPingTime = Date.now();
+                    sendWSMessage('ping', {});
+                }
+            }, 5000);
+        }
+
+        function stopHealthMonitoring() {
+            if (pingInterval) {
+                clearInterval(pingInterval);
+                pingInterval = null;
+            }
+        }
+
+        function updateLatency(latency) {
+            const latencyEl = document.getElementById('latencyValue');
+            latencyEl.textContent = `${latency}ms`;
+
+            if (latency < 50) {
+                latencyEl.style.color = '#4caf50';
+            } else if (latency < 150) {
+                latencyEl.style.color = '#ff9800';
+            } else {
+                latencyEl.style.color = '#f44336';
+            }
+        }
+
+        function updateConnectionHealth(latency) {
+            // Calculate health based on latency
+            let health = 100;
+            if (latency > 200) health = 60;
+            else if (latency > 150) health = 75;
+            else if (latency > 100) health = 85;
+            else if (latency > 50) health = 95;
+
+            connectionHealth = health;
+            const healthEl = document.getElementById('healthValue');
+            healthEl.textContent = `${health}%`;
+
+            if (health >= 90) {
+                healthEl.style.color = '#4caf50';
+            } else if (health >= 70) {
+                healthEl.style.color = '#ff9800';
+            } else {
+                healthEl.style.color = '#f44336';
+            }
+        }
+
+        function disconnectWebSocket() {
+            // Clear reconnect timeout
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+                reconnectTimeout = null;
+            }
+            reconnectAttempts = maxReconnectAttempts; // Prevent auto-reconnect
+
+            if (ws) {
+                ws.close();
+                ws = null;
+                logMP('info', 'Disconnected from WebSocket');
+                updateWSStatus(false);
+            }
+            stopHealthMonitoring();
+        }
+
+        function updateWSStatus(connected) {
+            const indicator = document.getElementById('wsIndicator');
+            const status = document.getElementById('wsStatus');
+            const logIndicator = document.getElementById('wsLogIndicator');
+
+            if (connected) {
+                indicator.classList.add('connected');
+                status.textContent = 'Connected';
+                logIndicator.classList.remove('disconnected');
+            } else {
+                indicator.classList.remove('connected');
+                status.textContent = 'Disconnected';
+                logIndicator.classList.add('disconnected');
+            }
+        }
+
+        function handleWSMessage(data) {
+            logMP('info', `📨 ${data.type}`, data.payload);
+
+            switch (data.type) {
+                case 'connected':
+                    currentPlayerId = data.payload.player_id;
+                    logMP('success', `Connected as player: ${data.payload.player_id}`);
+                    break;
+                case 'room_created':
+                    currentRoomCode = data.payload.room_code;
+                    isHost = true;
+                    document.getElementById('roomCode').textContent = data.payload.room_code;
+                    document.getElementById('playerRole').textContent = 'Host';
+                    updatePlayerCount(data.payload.players?.length || 1);
+                    document.getElementById('roomStatus').textContent = 'Waiting';
+                    logMP('success', `Room created: ${data.payload.room_code}`);
+                    break;
+                case 'room_update':
+                    if (data.payload.room_code) {
+                        currentRoomCode = data.payload.room_code;
+                        document.getElementById('roomCode').textContent = data.payload.room_code;
+                    }
+                    updatePlayerCount(data.payload.players?.length || 0);
+                    logMP('info', `Room updated: ${data.payload.players?.length || 0} players`);
+                    break;
+                case 'room_joined':
+                    currentRoomCode = data.payload.room_code || data.payload.code;
+                    isHost = false;
+                    document.getElementById('roomCode').textContent = currentRoomCode;
+                    document.getElementById('playerRole').textContent = 'Player';
+                    document.getElementById('roomStatus').textContent = 'Waiting';
+                    logMP('success', `Joined room: ${currentRoomCode}`);
+                    break;
+                case 'player_joined':
+                    logMP('info', `Player joined: ${data.payload.username}`);
+                    updatePlayerCount(data.payload.player_count);
+                    break;
+                case 'player_left':
+                    logMP('info', `Player left: ${data.payload.username}`);
+                    updatePlayerCount(data.payload.player_count);
+                    break;
+                case 'player_ready_update':
+                    const readyPlayer = data.payload.players?.find(p => p.player_id === data.payload.player_id);
+                    logMP('success', `Player ${readyPlayer?.username || data.payload.player_id} is ready!`);
+                    break;
+                case 'game_started':
+                case 'game_start':
+                    document.getElementById('roomStatus').textContent = 'Playing';
+                    logMP('success', `🎮 Game started! Game ID: ${data.payload.game_id || 'N/A'}`);
+                    break;
+                case 'searching':
+                    logMP('info', `🔍 Searching for match... (${data.payload.players_waiting} waiting)`);
+                    break;
+                case 'error':
+                    logMP('error', `Error: ${data.payload.error}`);
+                    break;
+                default:
+                    logMP('info', `Unknown message type: ${data.type}`);
+            }
+        }
+
+        function sendWSMessage(type, payload = {}) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                logMP('error', 'WebSocket not connected');
+                return;
+            }
+
+            const message = { type, payload };
+            ws.send(JSON.stringify(message));
+            logMP('info', `📤 Sent ${type}`, payload);
+        }
+
+        function createRoom() {
+            sendWSMessage('create_room', {
+                max_players: 10,
+                host_is_playing: true
+            });
+        }
+
+        function joinRoom() {
+            const code = document.getElementById('roomCodeInput').value.trim();
+            if (!code) {
+                logMP('error', 'Please enter a room code');
+                return;
+            }
+
+            sendWSMessage('join_room', { code });
+        }
+
+        function leaveRoom() {
+            sendWSMessage('leave_room');
+            currentRoomCode = null;
+            isHost = false;
+            document.getElementById('roomCode').textContent = '--';
+            document.getElementById('playerRole').textContent = '--';
+            document.getElementById('roomStatus').textContent = '--';
+        }
+
+        function sendReady() {
+            sendWSMessage('player_ready');
+        }
+
+        function startGame() {
+            if (!isHost) {
+                logMP('error', 'Only host can start the game');
+                return;
+            }
+            sendWSMessage('start_game');
+        }
+
+        function findMatch() {
+            sendWSMessage('find_match', {
+                skill_level: 'medium'
+            });
+        }
+
+        function updatePlayerCount(count) {
+            document.getElementById('playerCount').textContent = count || 0;
+        }
+
+        async function runAllMultiplayerTests() {
+            logMP('info', '⚡ Running all multiplayer tests sequentially...');
+
+            // Step 1: Connect to WebSocket
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                connectWebSocket();
+                await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for connection
+            }
+
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                logMP('error', 'Failed to connect to WebSocket. Aborting tests.');
+                return;
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Step 2: Create a room
+            logMP('info', 'Test 1/5: Creating room...');
+            createRoom();
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            // Step 3: Send ready signal
+            logMP('info', 'Test 2/5: Sending ready signal...');
+            sendReady();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Step 4: Start game (as host)
+            logMP('info', 'Test 3/5: Starting game...');
+            startGame();
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            // Step 5: Leave room
+            logMP('info', 'Test 4/5: Leaving room...');
+            leaveRoom();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Step 6: Find match
+            logMP('info', 'Test 5/5: Finding match...');
+            findMatch();
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            logMP('success', '✅ All multiplayer tests completed!');
+        }
+
+        // ===== LOGGING FUNCTIONS =====
+
+        function logSP(type, message, data = null) {
+            log('spActivityLog', type, message, data);
+        }
+
+        function logMP(type, message, data = null) {
+            log('mpActivityLog', type, message, data);
+        }
+
+        function log(containerId, type, message, data = null) {
+            const logContainer = document.getElementById(containerId);
+            const timestamp = new Date().toLocaleTimeString();
+
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+
+            let content = `
+                <span class="timestamp">[${timestamp}]</span>
+                <span class="log-type ${type}">${type.toUpperCase()}</span>
+                <span class="log-message">${message}</span>
+            `;
+
+            if (data) {
+                content += `<div class="json-view">${JSON.stringify(data, null, 2)}</div>`;
+            }
+
+            logEntry.innerHTML = content;
+            logContainer.insertBefore(logEntry, logContainer.firstChild);
+
+            while (logContainer.children.length > 30) {
+                logContainer.removeChild(logContainer.lastChild);
+            }
+        }
+
+        function clearLogs(type) {
+            const containerId = type === 'sp' ? 'spActivityLog' : 'mpActivityLog';
+            document.getElementById(containerId).innerHTML = `
+                <div class="log-entry info">
+                    <span class="timestamp">[${new Date().toLocaleTimeString()}]</span>
+                    <span class="log-type info">INFO</span>
+                    <span class="log-message">Logs cleared.</span>
+                </div>
+            `;
+        }
+
+        async function copyActivityLog(type) {
+            const containerId = type === 'sp' ? 'spActivityLog' : 'mpActivityLog';
+            const logContainer = document.getElementById(containerId);
+            const copyButton = event.target;
+
+            const logText = Array.from(logContainer.children)
+                .map(entry => entry.textContent.trim().replace(/\s+/g, ' '))
+                .join('\n\n');
+
+            try {
+                await navigator.clipboard.writeText(logText);
+                const originalText = copyButton.textContent;
+                copyButton.textContent = '✓ Copied!';
+                copyButton.classList.add('copied');
+
+                setTimeout(() => {
+                    copyButton.textContent = originalText;
+                    copyButton.classList.remove('copied');
+                }, 2000);
+
+                if (type === 'sp') {
+                    logSP('success', 'Log copied to clipboard');
+                } else {
+                    logMP('success', 'Log copied to clipboard');
+                }
+            } catch (error) {
+                if (type === 'sp') {
+                    logSP('error', `Copy failed: ${error.message}`);
+                } else {
+                    logMP('error', `Copy failed: ${error.message}`);
+                }
+            }
+        }
+
+        function exportLogs(type, format) {
+            const containerId = type === 'sp' ? 'spActivityLog' : 'mpActivityLog';
+            const logContainer = document.getElementById(containerId);
+            const logs = [];
+
+            // Parse log entries
+            Array.from(logContainer.children).forEach(entry => {
+                const timestamp = entry.querySelector('.timestamp')?.textContent.replace(/[\[\]]/g, '').trim();
+                const logType = entry.querySelector('.log-type')?.textContent.trim();
+                const message = entry.querySelector('.log-message')?.textContent.trim();
+                const jsonView = entry.querySelector('.json-view')?.textContent;
+
+                logs.push({
+                    timestamp,
+                    type: logType,
+                    message,
+                    data: jsonView ? JSON.parse(jsonView) : null
+                });
+            });
+
+            // Create download based on format
+            let content, filename, mimeType;
+
+            if (format === 'json') {
+                content = JSON.stringify({
+                    exported: new Date().toISOString(),
+                    type: type === 'sp' ? 'Single Player' : 'Multiplayer',
+                    logs: logs.reverse()
+                }, null, 2);
+                filename = `ubible-${type}-logs-${Date.now()}.json`;
+                mimeType = 'application/json';
+            }
+
+            // Create blob and download
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            if (type === 'sp') {
+                logSP('success', `Logs exported as ${format.toUpperCase()}`);
+            } else {
+                logMP('success', `Logs exported as ${format.toUpperCase()}`);
+            }
+        }
+    </script>
+</body>
+</html>

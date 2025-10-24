@@ -15,7 +15,17 @@ import (
 // CreateTeamTheme creates a new team theme
 // POST /api/teams/:id/themes
 func CreateTeamTheme(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uint)
+	userIDRaw := c.Locals("userId")
+	var userID uint
+	switch v := userIDRaw.(type) {
+	case float64:
+		userID = uint(v)
+	case uint:
+		userID = v
+	default:
+		return c.Status(401).JSON(fiber.Map{"success": false, "error": "Invalid user ID"})
+	}
+
 	teamID, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{
@@ -102,9 +112,9 @@ func GetTeamThemes(c *fiber.Ctx) error {
 
 	db := database.GetDB()
 	var themes []models.TeamTheme
-	
+
 	query := db.Where("team_id = ? AND is_active = ?", uint(teamID), true)
-	
+
 	// Filter by tag if provided
 	if tag := c.Query("tag"); tag != "" {
 		query = query.Where("? = ANY(tags)", tag)
@@ -114,6 +124,45 @@ func GetTeamThemes(c *fiber.Ctx) error {
 		Preload("Creator").
 		Order("usage_count DESC, created_at DESC").
 		Find(&themes).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"success": false,
+			"error":   "Failed to retrieve themes",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"success": true,
+		"themes":  themes,
+		"count":   len(themes),
+	})
+}
+
+// GetUserTeamThemes retrieves all themes from all teams the user is a member of
+// GET /api/teams/themes
+func GetUserTeamThemes(c *fiber.Ctx) error {
+	userIDRaw := c.Locals("userId")
+	var userID uint
+	switch v := userIDRaw.(type) {
+	case float64:
+		userID = uint(v)
+	case uint:
+		userID = v
+	default:
+		return c.Status(401).JSON(fiber.Map{"success": false, "error": "Invalid user ID"})
+	}
+
+	db := database.GetDB()
+	var themes []models.TeamTheme
+
+	// Get all themes from teams where user is a member OR public themes
+	err := db.Where("team_themes.is_active = ? AND (team_themes.is_public = ? OR team_themes.team_id IN (SELECT team_id FROM team_members WHERE user_id = ? AND is_active = ?))",
+		true, true, userID, true).
+		Preload("Creator").
+		Preload("Team").
+		Order("team_themes.created_at DESC").
+		Find(&themes).Error
+
+	if err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"success": false,
 			"error":   "Failed to retrieve themes",
@@ -158,7 +207,17 @@ func GetTeamTheme(c *fiber.Ctx) error {
 // UpdateTeamTheme updates a team theme
 // PUT /api/themes/:id
 func UpdateTeamTheme(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uint)
+	userIDRaw := c.Locals("userId")
+	var userID uint
+	switch v := userIDRaw.(type) {
+	case float64:
+		userID = uint(v)
+	case uint:
+		userID = v
+	default:
+		return c.Status(401).JSON(fiber.Map{"success": false, "error": "Invalid user ID"})
+	}
+
 	themeID, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{
@@ -230,7 +289,17 @@ func UpdateTeamTheme(c *fiber.Ctx) error {
 // DeleteTeamTheme soft deletes a team theme
 // DELETE /api/themes/:id
 func DeleteTeamTheme(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uint)
+	userIDRaw := c.Locals("userId")
+	var userID uint
+	switch v := userIDRaw.(type) {
+	case float64:
+		userID = uint(v)
+	case uint:
+		userID = v
+	default:
+		return c.Status(401).JSON(fiber.Map{"success": false, "error": "Invalid user ID"})
+	}
+
 	themeID, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{
@@ -459,7 +528,17 @@ func GetAllTags(c *fiber.Ctx) error {
 // CloneTheme clones a public theme to user's team
 // POST /api/themes/:id/clone
 func CloneTheme(c *fiber.Ctx) error {
-	userID := c.Locals("userID").(uint)
+	userIDRaw := c.Locals("userId")
+	var userID uint
+	switch v := userIDRaw.(type) {
+	case float64:
+		userID = uint(v)
+	case uint:
+		userID = v
+	default:
+		return c.Status(401).JSON(fiber.Map{"success": false, "error": "Invalid user ID"})
+	}
+
 	themeID, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{

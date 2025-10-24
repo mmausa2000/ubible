@@ -1,8 +1,8 @@
 package admin
 
 import (
-	"bible-quiz-pro/database"
-	"bible-quiz-pro/models"
+	"ubible/database"
+	"ubible/models"
 
 	"github.com/gofiber/fiber/v2"
 )

@@ -7,29 +7,35 @@ import (
 
 // Theme represents a quiz theme
 type Theme struct {
-	ID          uint      `json:"id" gorm:"primaryKey"`
-	Name        string    `json:"name" gorm:"not null;size:100"`
-	Description string    `json:"description" gorm:"type:text"`
-	Icon        string    `json:"icon" gorm:"size:50"`
-	Color       string    `json:"color" gorm:"size:20"`
-	IsActive    bool      `json:"is_active" gorm:"default:true"`
-	IsDefault   bool      `json:"is_default" gorm:"default:false"`
-	UnlockCost  int       `json:"unlock_cost" gorm:"default:0"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	Questions   []Question `json:"questions,omitempty" gorm:"foreignKey:ThemeID"`
+	ID             uint       `json:"id" gorm:"primaryKey"`
+	Name           string     `json:"name" gorm:"not null;size:100"`
+	Description    string     `json:"description" gorm:"type:text"`
+	Icon           string     `json:"icon" gorm:"size:50"`
+	Color          string     `json:"color" gorm:"size:20"`
+	IsActive       bool       `json:"is_active" gorm:"default:true"`
+	IsDefault      bool       `json:"is_default" gorm:"default:false"`
+	IsFileBacked   bool       `json:"is_file_backed" gorm:"default:false"`
+	IsPublic       bool       `json:"is_public" gorm:"default:true"`
+	CreatedByGuest bool       `json:"created_by_guest" gorm:"default:false"`
+	CreatedBy      *uint      `json:"created_by" gorm:"index"`
+	Creator        *User      `json:"creator,omitempty" gorm:"foreignKey:CreatedBy"`
+	UnlockCost     int        `json:"unlock_cost" gorm:"default:0"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
+	Questions      []Question `json:"questions,omitempty" gorm:"foreignKey:ThemeID"`
 }
 
 // Question represents a U Bible quiz question
 type Question struct {
-	ID            uint   `json:"id" gorm:"primaryKey"`
-	ThemeID       uint   `json:"theme_id" gorm:"not null;index"`
-	Theme         *Theme `json:"theme,omitempty" gorm:"foreignKey:ThemeID"`
-	Text          string `json:"text" gorm:"not null;type:text"`
-	CorrectAnswer string `json:"correct_answer" gorm:"not null;size:500"`
-	WrongAnswers  string `json:"wrong_answers" gorm:"not null;type:text"` // JSON array
-	Reference     string `json:"reference" gorm:"size:100"`
-	Difficulty    string `json:"difficulty" gorm:"default:'medium';size:20"`
+	ID            uint      `json:"id" gorm:"primaryKey"`
+	ThemeID       uint      `json:"theme_id" gorm:"not null;index"`
+	Theme         *Theme    `json:"theme,omitempty" gorm:"foreignKey:ThemeID"`
+	ThemeName     string    `json:"theme_name" gorm:"size:100;index"`
+	Text          string    `json:"text" gorm:"not null;type:text"`
+	CorrectAnswer string    `json:"correct_answer" gorm:"not null;size:500"`
+	WrongAnswers  string    `json:"wrong_answers" gorm:"not null;type:text"`
+	Reference     string    `json:"reference" gorm:"size:100"`
+	Difficulty    string    `json:"difficulty" gorm:"default:'medium';size:20"`
 	CreatedAt     time.Time `json:"created_at"`
 }
 

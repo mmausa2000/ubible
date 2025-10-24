@@ -124,12 +124,16 @@
     
     <form class="auth-form active" id="loginForm">
       <div class="form-group">
-        <input type="text" class="form-input" id="loginUsername" 
+        <input type="text" class="form-input" id="loginUsername"
                placeholder="Username or Email" required>
       </div>
       <div class="form-group">
-        <input type="password" class="form-input" id="loginPassword" 
+        <input type="password" class="form-input" id="loginPassword"
                placeholder="Password" required>
+      </div>
+      <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+        <input type="checkbox" id="rememberMe" style="width: auto; height: 18px; cursor: pointer;">
+        <label for="rememberMe" style="margin: 0; cursor: pointer; user-select: none; color: rgba(255, 255, 255, 0.8);">Remember my username</label>
       </div>
       <button type="submit" class="btn btn-primary">Login</button>
       <div id="loginError" class="error-message"></div>
@@ -178,29 +182,76 @@
       }
     }
     
+    // Load remembered username on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      const rememberedUsername = localStorage.getItem('rememberedUsername');
+      if (rememberedUsername) {
+        document.getElementById('loginUsername').value = rememberedUsername;
+        document.getElementById('rememberMe').checked = true;
+      }
+    });
+
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      
+
       const username = document.getElementById('loginUsername').value;
       const password = document.getElementById('loginPassword').value;
-      
+      const rememberMe = document.getElementById('rememberMe').checked;
+
+      console.log('🔐 Login form submitted for:', username);
+
+      // Handle Remember Me checkbox
+      if (rememberMe) {
+        localStorage.setItem('rememberedUsername', username);
+        console.log('✅ Username saved for next time');
+      } else {
+        localStorage.removeItem('rememberedUsername');
+        console.log('❌ Username not saved');
+      }
+
       try {
         const response = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password })
         });
-        
+
         const data = await response.json();
-        
+        console.log('🔐 Login response received:', {
+          success: data.success,
+          hasToken: !!data.token,
+          tokenLength: data.token ? data.token.length : 0,
+          hasUser: !!data.user,
+          username: data.user?.username
+        });
+
         if (data.success) {
+          console.log('🔐 Saving token to localStorage...');
+          console.log('🔐 Token value:', data.token);
+
+          // Clear any old tokens first to prevent conflicts
+          console.log('🔐 Clearing old token/user data...');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+
+          // Now save the new token and user
           localStorage.setItem('token', data.token);
           localStorage.setItem('user', JSON.stringify(data.user));
+
+          // Verify it was saved
+          const savedToken = localStorage.getItem('token');
+          const savedUser = localStorage.getItem('user');
+          console.log('🔐 Verification after save:');
+          console.log('  - Token saved:', savedToken);
+          console.log('  - User saved:', savedUser);
+          console.log('  - Token matches:', savedToken === data.token);
+
           window.location.href = '/';
         } else {
           document.getElementById('loginError').textContent = data.error;
         }
       } catch (error) {
+        console.error('🔐 Login error:', error);
         document.getElementById('loginError').textContent = 'Login failed';
       }
     });
@@ -222,6 +273,11 @@
         const data = await response.json();
         
         if (data.success) {
+          // Clear old data first
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+
+          // Save new credentials
           localStorage.setItem('token', data.token);
           localStorage.setItem('user', JSON.stringify(data.user));
           window.location.href = '/';
@@ -247,6 +303,12 @@
         const data = await response.json();
         
         if (data.success) {
+          // Clear old data first
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          localStorage.removeItem('isGuest');
+
+          // Save new credentials
           localStorage.setItem('token', data.token);
           localStorage.setItem('user', JSON.stringify(data.user));
           localStorage.setItem('isGuest', 'true');
@@ -283,38 +345,38 @@
     </div>
     
     <!-- Login Form -->
-    <form class="auth-form active" id="loginForm" onsubmit="handleLogin(event)">
+    <form class="auth-form active" id="modalLoginForm" onsubmit="handleLogin(event)">
       <div class="form-group">
-        <input type="text" class="form-input" id="loginUsername" 
+        <input type="text" class="form-input" id="modalLoginUsername"
                placeholder="Username or Email" required>
       </div>
       <div class="form-group">
-        <input type="password" class="form-input" id="loginPassword" 
+        <input type="password" class="form-input" id="modalLoginPassword"
                placeholder="Password" required>
       </div>
       <button type="submit" class="btn btn-primary">Login</button>
       <div class="form-links">
         <a href="#" onclick="showForgotPassword(); return false;">Forgot Password?</a>
       </div>
-      <div id="loginError" class="auth-error"></div>
+      <div id="modalLoginError" class="auth-error"></div>
     </form>
     
     <!-- Register Form -->
-    <form class="auth-form" id="registerForm" onsubmit="handleRegister(event)">
+    <form class="auth-form" id="modalRegisterForm" onsubmit="handleRegister(event)">
       <div class="form-group">
-        <input type="text" class="form-input" id="registerUsername" 
+        <input type="text" class="form-input" id="modalRegisterUsername"
                placeholder="Choose a username" required minlength="3">
       </div>
       <div class="form-group">
-        <input type="email" class="form-input" id="registerEmail" 
+        <input type="email" class="form-input" id="modalRegisterEmail"
                placeholder="Email address" required>
       </div>
       <div class="form-group">
-        <input type="password" class="form-input" id="registerPassword" 
+        <input type="password" class="form-input" id="modalRegisterPassword"
                placeholder="Password (min 6 characters)" required minlength="6">
       </div>
       <button type="submit" class="btn btn-primary">Create Account</button>
-      <div id="registerError" class="auth-error"></div>
+      <div id="modalRegisterError" class="auth-error"></div>
     </form>
     
     <!-- Guest Form -->
@@ -933,9 +995,9 @@ class AuthModal {
     });
     
     const formMap = {
-      'login': 'loginForm',
-      'register': 'registerForm',
-      'sign up': 'registerForm',
+      'login': 'modalLoginForm',
+      'register': 'modalRegisterForm',
+      'sign up': 'modalRegisterForm',
       'guest': 'guestForm'
     };
     
@@ -958,53 +1020,53 @@ class AuthModal {
   async handleLogin(event) {
     event.preventDefault();
     this.clearErrors();
-    
-    const username = document.getElementById('loginUsername').value;
-    const password = document.getElementById('loginPassword').value;
-    
+
+    const username = document.getElementById('modalLoginUsername').value;
+    const password = document.getElementById('modalLoginPassword').value;
+
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         this.onAuthSuccess(data, 'Welcome back!');
       } else {
-        this.showError('loginError', data.error || 'Login failed');
+        this.showError('modalLoginError', data.error || 'Login failed');
       }
     } catch (error) {
-      this.showError('loginError', 'Connection error. Please try again.');
+      this.showError('modalLoginError', 'Connection error. Please try again.');
     }
   }
   
   async handleRegister(event) {
     event.preventDefault();
     this.clearErrors();
-    
-    const username = document.getElementById('registerUsername').value;
-    const email = document.getElementById('registerEmail').value;
-    const password = document.getElementById('registerPassword').value;
-    
+
+    const username = document.getElementById('modalRegisterUsername').value;
+    const email = document.getElementById('modalRegisterEmail').value;
+    const password = document.getElementById('modalRegisterPassword').value;
+
     try {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, email, password })
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         this.onAuthSuccess(data, 'Account created successfully!');
       } else {
-        this.showError('registerError', data.error || 'Registration failed');
+        this.showError('modalRegisterError', data.error || 'Registration failed');
       }
     } catch (error) {
-      this.showError('registerError', 'Connection error. Please try again.');
+      this.showError('modalRegisterError', 'Connection error. Please try again.');
     }
   }
   
@@ -1033,10 +1095,14 @@ class AuthModal {
   }
   
   onAuthSuccess(data, message) {
-    // Store credentials
+    // Clear old credentials first
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+
+    // Store new credentials
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(data.user));
-    
+
     // Show success message
     this.showSuccess(message);
     

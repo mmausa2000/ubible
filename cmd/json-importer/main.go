@@ -6,11 +6,11 @@ import (
 	"log"
 	"os"
 
-	"gorm.io/driver/sqlite"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-type U BibleVerse struct {
+type BibleVerse struct {
 	ID          uint   `gorm:"primaryKey"`
 	Book        string `gorm:"index;not null"`
 	Chapter     int    `gorm:"index;not null"`
@@ -42,12 +42,18 @@ var bookNames = map[string]string{
 }
 
 func main() {
-	db, err := gorm.Open(sqlite.Open("./data/ubible_quiz.db"), &gorm.Config{})
+	// Get PostgreSQL connection string from environment
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		dsn = "host=localhost port=5432 user=alberickecha dbname=ubible sslmode=disable"
+	}
+
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
 
-	if err := db.AutoMigrate(&U BibleVerse{}); err != nil {
+	if err := db.AutoMigrate(&BibleVerse{}); err != nil {
 		log.Fatal("Failed to migrate database:", err)
 	}
 
@@ -64,7 +70,7 @@ func main() {
 
 	fmt.Printf("Found %d books\n\n", len(books))
 
-	var verses []U BibleVerse
+	var verses []BibleVerse
 	
 	for _, book := range books {
 		bookName := bookNames[book.Abbrev]
@@ -75,7 +81,7 @@ func main() {
 		
 		for chapterNum, chapter := range book.Chapters {
 			for verseNum, verseText := range chapter {
-				verses = append(verses, U BibleVerse{
+				verses = append(verses, BibleVerse{
 					Book:        bookName,
 					Chapter:     chapterNum + 1,
 					Verse:       verseNum + 1,
@@ -106,6 +112,6 @@ func main() {
 	fmt.Println("\n✓ Migration completed successfully!")
 	
 	var count int64
-	db.Model(&U BibleVerse{}).Count(&count)
+	db.Model(&BibleVerse{}).Count(&count)
 	fmt.Printf("✓ Total verses in database: %d\n", count)
 }

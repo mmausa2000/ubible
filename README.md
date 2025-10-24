@@ -51,15 +51,15 @@ A comprehensive, production-ready Bible quiz application with real-time multipla
 
 ### Prerequisites
 - **Go 1.19+**
-- **SQLite3** (included with most systems)
+- **PostgreSQL 14+**
 - **Make** (optional, for build commands)
 
 ### Installation
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/yourusername/bible-quiz-pro.git
-cd bible-quiz-pro
+git clone https://github.com/yourusername/ubible.git
+cd ubible
 
 # 2. Install dependencies
 go mod download
@@ -80,14 +80,14 @@ mkdir -p data verses backups static
 go run main.go
 
 # Or build and run
-go build -o bible-quiz-pro main.go
-./bible-quiz-pro
+go build -o ubible main.go
+./ubible
 ```
 
 ### First Time Setup
 
 The application will:
-1. ✅ Initialize SQLite database at `./data/bible_quiz.db`
+1. ✅ Connect to PostgreSQL database (see POSTGRES_SETUP.md)
 2. ✅ Create all tables automatically
 3. ✅ Create admin user from `.env` credentials
 4. ✅ Load 22+ default achievements
@@ -141,14 +141,11 @@ The application will:
 ## 📁 Project Structure
 
 ```
-bible-quiz-pro/
+ubible/
 ├── main.go                      # Application entry point
 ├── go.mod                       # Go dependencies
 ├── .env.example                 # Environment template
 ├── .env                         # Your configuration (DO NOT COMMIT)
-│
-├── data/
-│   └── bible_quiz.db           # SQLite database (auto-created)
 │
 ├── verses/                     # Verse files (JSON/TXT)
 │   ├── faith.json
@@ -378,7 +375,7 @@ Quick overview:
 
 1. **Build for production:**
    ```bash
-   CGO_ENABLED=1 GOOS=linux go build -ldflags="-s -w" -o bible-quiz-pro main.go
+   CGO_ENABLED=1 GOOS=linux go build -ldflags="-s -w" -o ubible main.go
    ```
 
 2. **Configure environment:**
@@ -501,13 +498,13 @@ DEBUG_MODE=true go run main.go
 
 ```bash
 # Standard build
-go build -o bible-quiz-pro main.go
+go build -o ubible main.go
 
 # Optimized build (smaller binary)
-go build -ldflags="-s -w" -o bible-quiz-pro main.go
+go build -ldflags="-s -w" -o ubible main.go
 
 # Build with version
-VERSION=$(git describe --tags) go build -ldflags="-s -w -X main.Version=$VERSION" -o bible-quiz-pro main.go
+VERSION=$(git describe --tags) go build -ldflags="-s -w -X main.Version=$VERSION" -o ubible main.go
 ```
 
 ---
@@ -584,7 +581,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Built with [Go](https://golang.org/)
 - [Fiber](https://gofiber.io/) - Web framework
 - [GORM](https://gorm.io/) - ORM library
-- [SQLite](https://www.sqlite.org/) - Database
+- [PostgreSQL](https://www.postgresql.org/) - Database
 - [JWT-Go](https://github.com/golang-jwt/jwt) - JWT implementation
 - [bcrypt](https://pkg.go.dev/golang.org/x/crypto/bcrypt) - Password hashing
 
@@ -592,8 +589,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Issues:** [GitHub Issues](https://github.com/yourusername/bible-quiz-pro/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/yourusername/bible-quiz-pro/discussions)
+- **Issues:** [GitHub Issues](https://github.com/yourusername/ubible/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/yourusername/ubible/discussions)
 - **Email:** support@yourdomain.com
 - **Security:** security@yourdomain.com
 

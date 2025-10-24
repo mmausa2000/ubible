@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clear Cache - U Bible</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 50%, #16213e 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+    .container {
+      max-width: 600px;
+      width: 90%;
+      padding: 40px;
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(20px);
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      text-align: center;
+    }
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 20px;
+    }
+    p {
+      margin-bottom: 15px;
+      line-height: 1.6;
+      color: rgba(255, 255, 255, 0.8);
+    }
+    .status {
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      margin: 20px 0;
+      font-family: monospace;
+      font-size: 0.9rem;
+      text-align: left;
+    }
+    .btn {
+      padding: 15px 30px;
+      margin: 10px;
+      border: none;
+      border-radius: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 1rem;
+      color: white;
+    }
+    .btn-danger {
+      background: linear-gradient(135deg, #f44336, #e53935);
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #4caf50, #66bb6a);
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+    .success {
+      color: #4caf50;
+      font-weight: bold;
+    }
+    .warning {
+      color: #ff9800;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔧 Clear Cache & Fix Token</h1>
+
+    <p>This page will help you clear the old invalid token and start fresh.</p>
+
+    <div class="status" id="status">
+      <strong>Current Status:</strong><br>
+      Checking localStorage...
+    </div>
+
+    <button class="btn btn-danger" onclick="clearEverything()">
+      🗑️ Clear All Data & Reload
+    </button>
+
+    <button class="btn btn-primary" onclick="window.location.href='/'">
+      🏠 Go to Home
+    </button>
+
+    <p style="margin-top: 30px; font-size: 0.9rem; color: rgba(255, 255, 255, 0.5);">
+      This will clear: localStorage, sessionStorage, and cache.<br>
+      You'll need to log in again after this.
+    </p>
+  </div>
+
+  <script>
+    // Check current state
+    window.addEventListener('DOMContentLoaded', () => {
+      const token = localStorage.getItem('token');
+      const user = localStorage.getItem('user');
+
+      let statusHTML = '<strong>Current Status:</strong><br><br>';
+
+      if (token) {
+        statusHTML += `<span class="warning">⚠️ Token found:</span> ${token.substring(0, 50)}...<br>`;
+
+        // Try to decode JWT to see user ID
+        try {
+          const parts = token.split('.');
+          if (parts.length === 3) {
+            const payload = JSON.parse(atob(parts[1]));
+            statusHTML += `<span class="warning">User ID in token:</span> ${payload.user_id}<br>`;
+          }
+        } catch (e) {
+          statusHTML += '<span class="warning">Token is invalid format</span><br>';
+        }
+      } else {
+        statusHTML += '<span class="success">✅ No token found (clean)</span><br>';
+      }
+
+      if (user) {
+        const userData = JSON.parse(user);
+        statusHTML += `<span class="warning">⚠️ User found:</span> ${userData.username} (ID: ${userData.id})<br>`;
+      } else {
+        statusHTML += '<span class="success">✅ No user data found (clean)</span><br>';
+      }
+
+      statusHTML += '<br><strong>localStorage keys:</strong><br>';
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        statusHTML += `- ${key}<br>`;
+      }
+
+      document.getElementById('status').innerHTML = statusHTML;
+    });
+
+    function clearEverything() {
+      if (confirm('⚠️ This will clear ALL local data. Continue?')) {
+        console.log('🗑️ Clearing localStorage...');
+        localStorage.clear();
+
+        console.log('🗑️ Clearing sessionStorage...');
+        sessionStorage.clear();
+
+        console.log('✅ All cleared! Reloading...');
+
+        // Show success message
+        document.getElementById('status').innerHTML =
+          '<span class="success">✅ All data cleared!<br>Redirecting to login...</span>';
+
+        // Redirect to home after 1 second (modal will handle login)
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1000);
+      }
+    }
+  </script>
+</body>
+</html>

@@ -14,43 +14,28 @@
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 50%, #16213e 100%);
-            min-height: 100vh;
+            height: 100vh;
             color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             overflow: hidden;
-        }
-
-        .app-container {
-            width: 95%;
-            max-width: 1500px;
-            height: 90vh;
-            max-height: 850px;
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(20px);
-            border-radius: 30px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            display: grid;
-            grid-template-rows: 80px 1fr 80px;
-            overflow: hidden;
-            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
-            position: relative;
+            margin: 0;
+            padding: 0;
         }
 
         .quiz-header {
-            background: rgba(255, 255, 255, 0.05);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 0 40px;
+            height: 60px;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            padding: 0 30px;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
         }
 
         .header-left {
+            flex: 1;
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 20px;
         }
 
         .logo {
@@ -89,10 +74,17 @@
         }
 
         .header-center {
-            flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
+        }
+
+        .header-right {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 20px;
         }
 
         .quiz-progress {
@@ -167,20 +159,24 @@
         }
 
         .content {
+            height: calc(100vh - 60px);
             display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px 40px;
+            flex-direction: column;
+            padding: 0;
             overflow: hidden;
         }
 
         .quiz-panel {
+            max-width: 900px;
             width: 100%;
-            max-width: 1000px;
-            height: 100%;
+            margin: 0 auto;
+            padding: 80px 30px 30px 30px;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100%;
+            box-sizing: border-box;
         }
 
         /* Default scoreboard styles (hidden by default) */
@@ -333,27 +329,57 @@
         }
 
         .question-card {
-            background: rgba(15, 52, 96, 0.6);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 30px 40px;
-            border: 2px solid rgba(76, 175, 80, 0.3);
-            flex: 1;
+            width: 100%;
             display: flex;
             flex-direction: column;
-            overflow-y: auto;
+            align-items: center;
+            height: 100%;
+        }
+
+        .question-container {
+            width: 100%;
+            min-height: 120px;
+            max-height: 180px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-shrink: 0;
         }
 
         .timer {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 20px;
-            padding: 10px 15px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            width: fit-content;
+            gap: 8px;
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.4);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
+        .score-badge {
+            background: rgba(33, 150, 243, 0.2);
+            border: 1px solid rgba(33, 150, 243, 0.4);
+        }
+
+        .question-number-badge {
+            background: rgba(76, 175, 80, 0.2);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: #4caf50;
+            font-weight: 600;
         }
 
         .timer.warning {
@@ -380,54 +406,104 @@
         }
 
         .question-text {
-            font-size: 1.5rem;
-            line-height: 1.8;
-            margin-bottom: 25px;
-            color: rgba(255, 255, 255, 0.95);
+            font-size: 1.4rem;
+            line-height: 1.5;
             text-align: center;
+            color: #fff;
+            font-weight: 500;
+            max-width: 850px;
+            margin: 0;
+            overflow-y: auto;
+            max-height: 100%;
+            padding: 10px;
+        }
+
+        .options-container {
             flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
+            max-height: 50vh;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 20px;
+            padding: 0 20px;
         }
 
         .options-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            gap: 18px;
+            flex-shrink: 0;
         }
 
         .option-btn {
-            padding: 20px 25px;
             background: rgba(255, 255, 255, 0.08);
-            border: 2px solid transparent;
-            border-radius: 16px;
-            color: white;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            text-align: center;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            border-radius: 18px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #fff;
+            padding: 18px 24px;
+            width: 100%;
+            min-height: 70px;
             display: flex;
             align-items: center;
             justify-content: center;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(6px);
+        }
+
+        .option-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(102, 187, 106, 0.1));
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
 
         .option-btn:hover:not(.disabled) {
-            background: rgba(255, 255, 255, 0.12);
-            transform: translateY(-4px);
-            box-shadow: 0 0 0 2px #4CAF50 inset;
+            background: rgba(255, 255, 255, 0.15);
+            border-color: #fff;
+            transform: scale(1.02);
+        }
+
+        .option-btn:hover:not(.disabled)::before {
+            opacity: 1;
+        }
+
+        .option-btn:active:not(.disabled) {
+            transform: translateY(-1px);
         }
 
         .option-btn.correct {
-            background: rgba(76, 175, 80, 0.2);
-            box-shadow: 0 0 0 2px #4CAF50 inset;
+            background: rgba(76, 175, 80, 0.3);
+            border-color: #4caf50;
+            animation: correctPulse 0.6s ease;
         }
 
         .option-btn.incorrect {
-            background: rgba(244, 67, 54, 0.2);
-            box-shadow: 0 0 0 2px #F44336 inset;
+            background: rgba(244, 67, 54, 0.3);
+            border-color: #f44336;
+            animation: wrongShake 0.5s ease;
+        }
+
+        @keyframes correctPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes wrongShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
         }
 
         .option-btn.disabled {
@@ -441,7 +517,8 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 40px;
+            padding: 10px 40px;
+            min-height: 50px;
         }
 
         .footer-info {
@@ -790,6 +867,32 @@
             animation: popScale 350ms ease-out;
         }
 
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 4000;
+            padding: 20px;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #2a3050 0%, #3a4570 100%);
+            border-radius: 24px;
+            padding: 40px;
+            max-width: 600px;
+            width: 90%;
+            border: 2px solid rgba(76, 175, 80, 0.3);
+        }
+
+        /* Responsive layout for tablets and smaller screens */
         @media (max-width: 768px) {
             .app-container {
                 grid-template-rows: 70px 1fr 70px;
@@ -818,19 +921,38 @@
             }
 
             .content {
-                padding: 15px 20px;
+                padding: 0;
             }
 
-            .question-card {
-                padding: 20px;
+            .quiz-panel {
+                padding: 40px 20px;
             }
 
             .question-text {
-                font-size: 1.2rem;
+                font-size: 1.1rem;
+                padding: 15px;
             }
 
-            .options-grid {
-                grid-template-columns: 1fr;
+            .option-btn {
+                font-size: 1rem;
+                padding: 14px;
+            }
+        }
+
+        /* Responsive layout for mobile phones */
+        @media (max-width: 480px) {
+            .quiz-panel {
+                padding: 30px 15px;
+            }
+
+            .question-text {
+                font-size: 1rem;
+                line-height: 1.4;
+            }
+
+            .option-btn {
+                font-size: 0.95rem;
+                padding: 12px;
             }
 
             .footer {
@@ -852,18 +974,25 @@
     </style>
 </head>
 <body>
-    <div class="app-container">
         <div class="quiz-header">
             <div class="header-left">
-                <div class="logo">📖</div>
-                <div class="app-name">
+                <div class="logo" onclick="location.href='/'" style="cursor: pointer;" title="Go to Home">📖</div>
+                <div class="app-name" onclick="location.href='/'" style="cursor: pointer;" title="Go to Home">
                     <h1>U Bible</h1>
                     <p>Playing Quiz</p>
+                </div>
+                <div class="question-number-badge">
+                    <span id="progressText">Question 1 of 20</span>
                 </div>
             </div>
             
             <div class="header-center">
-                <div class="scoreboard" id="scoreboard">
+                <div class="timer" id="timer">
+                    <span class="timer-icon">⏱️</span>
+                    <span class="timer-value" id="timerValue">30</span>
+                    <span>s</span>
+                </div>
+                <div class="scoreboard" id="scoreboard" style="display:none;">
                     <div class="player-score current-player" id="currentPlayerScore">
                         <div class="player-header">
                             <div class="player-info">
@@ -910,11 +1039,9 @@
             </div>
             
             <div class="header-right">
-                <div class="quiz-progress">
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
-                    </div>
-                    <div class="progress-text" id="progressText">Question 1 of 20</div>
+                <div class="stat-item score-badge">
+                    <span>🎯</span>
+                    <span id="score">0/20</span>
                 </div>
 
                 <div class="score-display">
@@ -933,13 +1060,9 @@
         <div class="content">
             <div class="quiz-panel">
                 <div class="question-card">
-                    <div class="timer" id="timer">
-                        <span class="timer-icon">⏱️</span>
-                        <span class="timer-value" id="timerValue">30</span>
-                        <span>seconds</span>
+                    <div class="question-container">
+                        <div class="question-text" id="questionText">Loading questions...</div>
                     </div>
-
-                    <div class="question-text" id="questionText">Loading question...</div>
 
                     <div class="options-grid" id="optionsGrid"></div>
                 </div>
@@ -965,6 +1088,7 @@
             <div class="footer-actions">
                 <a href="#" class="footer-link" onclick="confirmExit(event); return false;">Exit Quiz</a>
                 <a href="/settings.html" class="footer-link">Settings</a>
+                <a href="#" class="footer-link" onclick="openAboutModal(); return false;">About</a>
             </div>
         </div>
     </div>
@@ -1035,7 +1159,6 @@
                 <button class="btn btn-primary" onclick="location.href='/'">Home</button>
             </div>
         </div>
-    </div>
 
     <!-- Countdown Overlay -->
     <div class="countdown-overlay" id="countdownOverlay">
@@ -1045,7 +1168,76 @@
         </div>
     </div>
 
+    <!-- About Modal -->
+    <div class="modal-overlay" id="aboutModal" style="display: none;">
+        <div class="modal-content" style="max-width: 700px; max-height: 80vh; overflow-y: auto;">
+            <h2 style="margin-bottom: 20px; color: #4caf50;">📖 About This App</h2>
+
+            <div style="line-height: 1.8; color: rgba(255, 255, 255, 0.9); margin-bottom: 25px;">
+                <p style="margin-bottom: 15px;">
+                    This app was created by <strong style="color: #4caf50;">Apostle Maliyabwana</strong>, the current Overseer and Apostle of the Ukweli Church of Christ, also known as Ukweli Ministries. Born Meshak Mausa, Maliyabwana began programming in 2012, inspired by the story of Mark Zuckerberg, who built his first app at the age of 12.
+                </p>
+
+                <p style="margin-bottom: 15px;">
+                    Motivated by that story, he immersed himself in computer science and discovered Codeacademy (now known as Codecademy). He spent countless hours—sometimes up to 24 hours a day without sleep—on his father's computer learning web design and programming. This deep dedication continued until the age of 13, when his creative passions began to expand in new directions.
+                </p>
+
+                <p style="margin-bottom: 15px;">
+                    During that period, he taught himself Photoshop, believing that building clean and professional websites required strong design skills. This opened the door to photo editing, and a few years later, to music production. Eventually, he founded the <strong>NDP Entertainment Label</strong>, operating under the alias <em>Six Sons</em>, where he produced music and designed cover art for his friends.
+                </p>
+
+                <p style="margin-bottom: 15px;">
+                    His love for technology and creativity later led him into the field of sound engineering, merging his artistic expression with technical skill.
+                </p>
+
+                <p style="margin-bottom: 25px;">
+                    Born and raised in Tanzania (TZ), Maliyabwana moved to the United States in 2010 at the age of 10, carrying with him a deep passion for knowledge, innovation, and purpose—values that continue to shape both his ministry and his creative work today.
+                </p>
+            </div>
+
+            <div style="background: rgba(76, 175, 80, 0.1); border: 2px solid rgba(76, 175, 80, 0.3); border-radius: 15px; padding: 20px; margin-bottom: 20px;">
+                <h3 style="margin-bottom: 15px; color: #4caf50; font-size: 1.2rem;">💚 Support the Project</h3>
+                <p style="margin-bottom: 15px; line-height: 1.6; color: rgba(255, 255, 255, 0.9);">
+                    This app is still in its improvement stage, and your support can help it grow. If you'd like to contribute, you can donate via:
+                </p>
+                <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                    <div style="background: rgba(0, 0, 0, 0.2); padding: 12px 15px; border-radius: 10px; display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 1.3rem;">💵</span>
+                        <span style="color: rgba(255, 255, 255, 0.7);">Cash App:</span>
+                        <strong style="color: #4caf50;">$ukweliministries</strong>
+                    </div>
+                    <div style="background: rgba(0, 0, 0, 0.2); padding: 12px 15px; border-radius: 10px; display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 1.3rem;">💳</span>
+                        <span style="color: rgba(255, 255, 255, 0.7);">PayPal:</span>
+                        <strong style="color: #0070ba;">@ukweliministries</strong>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" onclick="closeAboutModal()" style="width: 100%; padding: 12px; font-size: 1rem;">
+                Close
+            </button>
+        </div>
+    </div>
+
     <script>
+        // Suppress browser extension errors
+        window.addEventListener('error', (e) => {
+            if (e.message && e.message.includes('message channel closed')) {
+                e.preventDefault();
+                e.stopPropagation();
+                return true;
+            }
+        });
+
+        window.addEventListener('unhandledrejection', (e) => {
+            if (e.reason && e.reason.message && e.reason.message.includes('message channel closed')) {
+                e.preventDefault();
+                e.stopPropagation();
+                return true;
+            }
+        });
+
         function loadQuizSettings() {
             try {
                 const multiplayerData = localStorage.getItem('multiplayerGame');
@@ -1089,6 +1281,7 @@
             correctAnswers: 0,
             timeRemaining: currentSettings.time,
             timerInterval: null,
+            answerHistory: [], // Track: { questionIndex, isCorrect, timeTaken, timeLimit, isSlow }
 
             reset() {
                 this.currentQuestionIndex = 0;
@@ -1096,6 +1289,7 @@
                 this.currentStreak = 0;
                 this.bestStreakValue = 0;
                 this.correctAnswers = 0;
+                this.answerHistory = [];
                 this.clearTimer();
             },
 
@@ -1104,6 +1298,21 @@
                     clearInterval(this.timerInterval);
                     this.timerInterval = null;
                 }
+            },
+
+            recordAnswer(questionIndex, isCorrect, timeTaken, timeLimit) {
+                const slowThreshold = timeLimit * 0.75; // 75% of time limit
+                const isSlow = timeTaken >= slowThreshold;
+
+                this.answerHistory.push({
+                    questionIndex,
+                    isCorrect,
+                    timeTaken,
+                    timeLimit,
+                    isSlow
+                });
+
+                console.log(`📊 Answer recorded: Q${questionIndex+1} - ${isCorrect ? 'Correct' : 'Wrong'} - ${timeTaken}s/${timeLimit}s ${isSlow ? '(SLOW)' : ''}`);
             }
         };
 
@@ -1208,15 +1417,29 @@
             }
         };
 
+        // Fisher-Yates shuffle algorithm
+        function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
         async function loadQuestions() {
             try {
                 const multiplayerData = localStorage.getItem('multiplayerGame');
                 if (multiplayerData) {
                     try {
                         const gameData = JSON.parse(multiplayerData);
+                        // Only use pre-loaded questions if they actually exist
                         if (gameData.isMultiplayer && gameData.questions && gameData.questions.length > 0) {
+                            console.log('📥 Using pre-loaded multiplayer questions:', gameData.questions.length);
                             QuizState.questions = gameData.questions;
                             return;
+                        } else if (gameData.isMultiplayer) {
+                            console.log('🌐 Multiplayer game - will fetch questions from API');
                         }
                     } catch (e) {
                         console.error('Error parsing multiplayer game data:', e);
@@ -1237,31 +1460,84 @@
                 let questions = data.verses;
                 console.log('Total verses loaded:', questions.length); // Debug logging
                 
-                // Client-side filtering by selected themes
-                const themes = JSON.parse(localStorage.getItem('selectedThemes') || '[]');
-                console.log('Selected themes:', themes); // Debug logging
-                
-                if (themes.length > 0 && !themes.includes('All Themes') && !themes.includes('✏️ All Themes')) {
+                // Check for theme from URL parameter first
+                const urlParams = new URLSearchParams(window.location.search);
+                const urlThemeId = urlParams.get('theme');
+
+                // Client-side filtering by selected themes (now using theme IDs)
+                let themes = [];
+                if (urlThemeId) {
+                    // Use theme from URL
+                    themes = [parseInt(urlThemeId)];
+                } else {
+                    // Use themes from localStorage (from settings page)
+                    themes = JSON.parse(localStorage.getItem('selectedThemes') || '[]');
+                }
+                console.log('Selected theme IDs:', themes); // Debug logging
+
+                console.log('Total verses loaded:', data.verses.length);
+                console.log('First verse:', data.verses[0]);
+                console.log('First verse theme (normalized):', (data.verses[0]?.theme_name ?? data.verses[0]?.themeName ?? data.verses[0]?.ThemeName ?? 'NO THEME'));
+                console.log('All verse theme IDs:', data.verses.map(v => v.theme_id));
+                console.log('All verse theme names:', data.verses.map(v => v.theme_name ?? v.themeName ?? v.ThemeName));
+                console.log('Selected theme IDs:', themes);
+
+                if (themes.length > 0 && Array.isArray(themes)) {
+                    // Filter by theme ID (themes is now an array of IDs)
                     questions = questions.filter(q => {
-                        if (!q.theme_name) return false;
-                        // Match theme names (case-insensitive, flexible matching)
-                        return themes.some(selectedTheme => {
-                            const cleanSelected = selectedTheme.toLowerCase().replace(/[^\w\s]/g, '').trim();
-                            const cleanVerse = q.theme_name.toLowerCase().replace(/[^\w\s]/g, '').trim();
-                            return cleanSelected.includes(cleanVerse) || cleanVerse.includes(cleanSelected);
-                        });
+                        if (!q.theme_id) return false;
+                        // Match theme IDs
+                        const matched = themes.includes(q.theme_id);
+                        if (matched) {
+                            const themeName = q.theme_name ?? q.themeName ?? q.ThemeName ?? '';
+                            console.log('Question matched theme ID:', q.theme_id, themeName);
+                        }
+                        return matched;
                     });
                 }
 
                 console.log('Filtered verses:', questions.length); // Debug logging
+                console.log('Final questions array:', questions);
 
                 if (questions.length === 0) {
-                    console.error('No verses after filtering. Check theme names match.');
-                    throw new Error('No questions match your selected themes. Please select different themes or choose "All Themes" in Settings.');
+                    console.error('❌ No verses after filtering!');
+                    console.error('Debug info:', {
+                        selectedThemes: themes,
+                        totalQuestionsFromAPI: data.verses.length,
+                        availableThemeIds: [...new Set(data.verses.map(v => v.theme_id))],
+                        localStorage: localStorage.getItem('selectedThemes')
+                    });
+                    throw new Error('No questions match your selected themes. Please go to Settings and re-select your themes.');
                 }
 
-                // Limit to requested number
-                QuizState.questions = questions.slice(0, currentSettings.questions);
+                // Smart Repetition System: Always deliver requested count
+                const requestedQuestions = currentSettings.questions;
+                const availableQuestions = questions.length;
+
+                if (availableQuestions >= requestedQuestions) {
+                    // Have enough unique questions
+                    QuizState.questions = questions.slice(0, requestedQuestions);
+                    console.log(`✅ Questions: Using ${requestedQuestions} unique questions`);
+                } else {
+                    // Need to repeat questions to reach requested count
+                    const gap = requestedQuestions - availableQuestions;
+                    console.log(`🔄 Smart Repetition: Need ${gap} more questions (have ${availableQuestions}, want ${requestedQuestions})`);
+
+                    // Start with all unique questions
+                    QuizState.questions = [...questions];
+
+                    // Build repetition pool (will be filled as quiz progresses)
+                    // For now, repeat random questions to fill the gap
+                    for (let i = 0; i < gap; i++) {
+                        const randomIndex = Math.floor(Math.random() * availableQuestions);
+                        QuizState.questions.push(questions[randomIndex]);
+                    }
+
+                    // Shuffle to mix repeated questions throughout
+                    QuizState.questions = shuffleArray(QuizState.questions);
+
+                    console.log(`📊 Final: ${QuizState.questions.length} questions (${availableQuestions} unique + ${gap} repeated)`);
+                }
                 
             } catch (error) {
                 console.error('Error loading questions:', error);
@@ -1269,76 +1545,89 @@
             }
         }
 
-        // Countdown overlay before quiz starts
-        function startCountdown() {
-            return new Promise((resolve) => {
-                const overlay = document.getElementById('countdownOverlay');
-                const numberEl = document.getElementById('countdownNumber');
-                if (!overlay || !numberEl) {
-                    resolve();
-                    return;
+        function showCountdown(seconds, callback) {
+            const totalSeconds = seconds;
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0,0,0,0.9);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 9999;
+                transition: background 0.3s ease;
+            `;
+
+            const countText = document.createElement('div');
+            countText.style.cssText = `
+                font-size: 10rem;
+                font-weight: 900;
+                color: #4caf50;
+                animation: pulse 1s ease;
+            `;
+            countText.textContent = seconds;
+            overlay.appendChild(countText);
+            document.body.appendChild(overlay);
+
+            const interval = setInterval(() => {
+                seconds--;
+
+                // Calculate opacity based on remaining seconds (fade from 0.9 to 0)
+                const opacity = (seconds / totalSeconds) * 0.9;
+                overlay.style.background = `rgba(0,0,0,${opacity})`;
+
+                if (seconds > 0) {
+                    countText.textContent = seconds;
+                } else {
+                    clearInterval(interval);
+                    overlay.remove();
+                    callback();
                 }
-
-                overlay.classList.add('show');
-
-                let count = 3;
-                numberEl.classList.remove('go');
-                numberEl.textContent = String(count);
-                numberEl.classList.remove('pop');
-                void numberEl.offsetWidth;
-                numberEl.classList.add('pop');
-
-                const tick = () => {
-                    if (count > 1) {
-                        count -= 1;
-                        numberEl.textContent = String(count);
-                        numberEl.classList.remove('pop');
-                        void numberEl.offsetWidth;
-                        numberEl.classList.add('pop');
-                        setTimeout(tick, 1000);
-                    } else {
-                        numberEl.textContent = 'GO!';
-                        numberEl.classList.add('go');
-                        numberEl.classList.remove('pop');
-                        void numberEl.offsetWidth;
-                        numberEl.classList.add('pop');
-                        setTimeout(() => {
-                            overlay.classList.remove('show');
-                            resolve();
-                        }, 650);
-                    }
-                };
-
-                setTimeout(tick, 1000);
-            });
+            }, 1000);
         }
 
-        async function initQuiz() {
-            try {
-                document.getElementById('timerValue').textContent = currentSettings.time;
-                document.getElementById('footerTimeLimit').textContent = currentSettings.time + 's';
-                document.getElementById('footerQuestionCount').textContent = currentSettings.questions;
-                
-                await loadQuestions();
-                
-                const gameData = localStorage.getItem('multiplayerGame');
-                if (gameData && JSON.parse(gameData).isMultiplayer) {
-                    MultiplayerState.totalQuestions = QuizState.questions.length;
-                    MultiplayerState.updateScoreboard();
-                }
-                
-                if (QuizState.questions.length > 0) {
-                    await startCountdown();
-                    displayQuestion();
-                } else {
-                    document.getElementById('questionText').textContent = 
-                        'No questions available. Please add verses in your themes.';
-                }
-            } catch (error) {
-                console.error('Failed to initialize quiz:', error);
-                document.getElementById('questionText').textContent = 
-                    'Failed to load quiz. Please try again.';
+        async function startQuiz() {
+            // Set a static loading message (no animation to avoid race conditions)
+            const questionText = document.getElementById('questionText');
+            if (questionText) {
+                questionText.textContent = 'Loading questions...';
             }
+
+            showCountdown(3, async () => {
+                try {
+                    document.getElementById('timerValue').textContent = currentSettings.time;
+                    document.getElementById('footerTimeLimit').textContent = currentSettings.time + 's';
+                    document.getElementById('footerQuestionCount').textContent = currentSettings.questions;
+
+                    await loadQuestions();
+
+                    const gameData = localStorage.getItem('multiplayerGame');
+                    if (gameData && JSON.parse(gameData).isMultiplayer) {
+                        MultiplayerState.totalQuestions = QuizState.questions.length;
+                        MultiplayerState.updateScoreboard();
+                    }
+
+                    // Clear loading message and display first question
+                    const questionTextEl = document.getElementById('questionText');
+                    if (questionTextEl) {
+                        questionTextEl.textContent = ''; // Clear loading message
+                    }
+
+                    if (QuizState.questions.length > 0) {
+                        displayQuestion();
+                    } else {
+                        document.getElementById('questionText').textContent =
+                            'No questions available. Please add verses in your themes.';
+                    }
+                } catch (error) {
+                    console.error('Failed to initialize quiz:', error);
+                    document.getElementById('questionText').textContent = 'Failed to load quiz. Please try again.';
+                }
+            });
         }
 
         function displayQuestion() {
@@ -1348,17 +1637,17 @@
             }
 
             const question = QuizState.questions[QuizState.currentQuestionIndex];
-            
-            document.getElementById('questionText').textContent = question.text;
-            
-            const progress = ((QuizState.currentQuestionIndex + 1) / QuizState.questions.length) * 100;
-            document.getElementById('progressFill').style.width = `${progress}%`;
-            document.getElementById('progressText').textContent = 
+
+            const questionTextEl = document.getElementById('questionText');
+            questionTextEl.textContent = question.text;
+
+            // Update question number badge
+            document.getElementById('progressText').textContent =
                 `Question ${QuizState.currentQuestionIndex + 1} of ${QuizState.questions.length}`;
-            
+
             const optionsContainer = document.getElementById('optionsGrid');
             optionsContainer.innerHTML = '';
-            
+
             question.options.forEach((option) => {
                 const button = document.createElement('button');
                 button.className = 'option-btn';
@@ -1366,8 +1655,31 @@
                 button.onclick = () => selectAnswer(option, question.correct_answer);
                 optionsContainer.appendChild(button);
             });
-            
+
             startTimer();
+        }
+
+        function resizeTextToFit(textElement, container) {
+            const maxFontSize = 1.6; // rem
+            const minFontSize = 0.9; // rem
+            let fontSize = maxFontSize;
+
+            // Convert rem to px (assuming 16px base)
+            const remToPx = 16;
+
+            textElement.style.fontSize = fontSize + 'rem';
+
+            // Get container dimensions
+            const containerHeight = container.clientHeight;
+            const containerPadding = parseFloat(getComputedStyle(container).paddingTop) +
+                                     parseFloat(getComputedStyle(container).paddingBottom);
+            const availableHeight = containerHeight - containerPadding;
+
+            // Reduce font size until text fits
+            while (textElement.scrollHeight > availableHeight && fontSize > minFontSize) {
+                fontSize -= 0.05;
+                textElement.style.fontSize = fontSize + 'rem';
+            }
         }
 
         function startTimer() {
@@ -1412,22 +1724,29 @@
 
         function selectAnswer(selectedAnswer, correctAnswer) {
             MultiplayerState.currentPlayerAnswered = true;
-            
+
+            // CRITICAL: Stop the timer immediately to prevent race conditions
+            QuizState.clearTimer();
+
             const isCorrect = selectedAnswer === correctAnswer;
+            const timeTaken = currentSettings.time - QuizState.timeRemaining;
             const timeBonus = Math.max(0, QuizState.timeRemaining * 10);
-            
+
+            // Record answer metadata for smart repetition
+            QuizState.recordAnswer(QuizState.currentQuestionIndex, isCorrect, timeTaken, currentSettings.time);
+
             if (isCorrect) {
                 QuizState.correctAnswers++;
                 QuizState.currentStreak++;
                 QuizState.score += 100 + timeBonus;
-                
+
                 if (QuizState.currentStreak > QuizState.bestStreakValue) {
                     QuizState.bestStreakValue = QuizState.currentStreak;
                 }
             } else {
                 QuizState.currentStreak = 0;
             }
-            
+
             updateScoreDisplay();
             updateStreakDisplay();
             
@@ -1476,7 +1795,6 @@
                 }
 
                 if (MultiplayerState.bothAnswered()) {
-                    QuizState.clearTimer();
                     setTimeout(() => {
                         MultiplayerState.reset();
                         QuizState.currentQuestionIndex++;
@@ -1494,11 +1812,18 @@
         function updateScoreDisplay() {
             const scoreEl = document.getElementById('currentScore');
             if (scoreEl) scoreEl.textContent = QuizState.score;
-            
+
+            // Update score badge in header
+            const scoreBadge = document.getElementById('score');
+            if (scoreBadge) {
+                scoreBadge.textContent = `${QuizState.correctAnswers}/${QuizState.questions.length}`;
+            }
+
             const totalAnswered = QuizState.currentQuestionIndex;
             if (totalAnswered > 0) {
                 const accuracy = (QuizState.correctAnswers / totalAnswered * 100).toFixed(0);
-                document.getElementById('footerAccuracy').textContent = accuracy + '%';
+                const footerAccuracyEl = document.getElementById('footerAccuracy');
+                if (footerAccuracyEl) footerAccuracyEl.textContent = accuracy + '%';
             }
             
             const gameData = localStorage.getItem('multiplayerGame');
@@ -1515,16 +1840,19 @@
 
         function showResults() {
             QuizState.clearTimer();
-            
+
+            // End game session
+            fetch('/api/game/end', { method: 'POST' }).catch(err => console.error('Failed to end game session:', err));
+
             const modal = document.getElementById('resultsModal');
             modal.classList.add('show');
-            
-            const accuracy = QuizState.questions.length > 0 ? 
+
+            const accuracy = QuizState.questions.length > 0 ?
                 (QuizState.correctAnswers / QuizState.questions.length * 100).toFixed(1) : 0;
-            
+
             document.getElementById('finalScore').textContent = QuizState.score;
             document.getElementById('finalAccuracy').textContent = `${accuracy}%`;
-            document.getElementById('correctCount').textContent = 
+            document.getElementById('correctCount').textContent =
                 `${QuizState.correctAnswers}/${QuizState.questions.length}`;
             document.getElementById('bestStreak').textContent = QuizState.bestStreakValue;
         }
@@ -1619,13 +1947,161 @@
         }
 
         window.addEventListener('beforeunload', () => {
+            // End game session when user closes tab
+            const token = localStorage.getItem('token');
+            if (token) {
+                navigator.sendBeacon('/api/game/end', new Blob([JSON.stringify({})], {
+                    type: 'application/json'
+                }));
+            }
+
             const gameData = localStorage.getItem('multiplayerGame');
             if (gameData && JSON.parse(gameData).isMultiplayer) {
                 notifyOpponentQuit();
             }
         });
 
-        document.addEventListener('DOMContentLoaded', () => {
+        async function loadPreferencesFromDatabase() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                // Guest user - use localStorage only
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/auth/preferences', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        // Update localStorage with database values
+                        localStorage.setItem('selectedThemes', JSON.stringify(data.selected_themes || []));
+                        localStorage.setItem('quizSettings', JSON.stringify({
+                            timeLimit: data.quiz_time_limit || 10,
+                            questionCount: data.quiz_question_count || 10
+                        }));
+
+                        console.log('Loaded preferences from database:', data);
+                    }
+                }
+            } catch (error) {
+                console.warn('Failed to load preferences from database, using localStorage:', error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // ========================================
+            // ENTRY POINT VALIDATION
+            // ========================================
+            // Enforce proper entry points: Quick Start OR Multiplayer modal ONLY
+            // Do not allow direct quiz.html access without proper setup
+
+            const multiplayerGame = localStorage.getItem('multiplayerGame');
+            const quizSettings = localStorage.getItem('quizSettings');
+            const selectedThemes = localStorage.getItem('selectedThemes');
+
+            let isValidEntry = false;
+
+            // Check if this is a multiplayer game (valid entry)
+            if (multiplayerGame) {
+                try {
+                    const game = JSON.parse(multiplayerGame);
+                    console.log('🔍 Checking multiplayer game data:', game);
+
+                    // For multiplayer, we just need isMultiplayer flag
+                    // gameId is optional - can be any of these variations or even missing
+                    if (game.isMultiplayer) {
+                        isValidEntry = true;
+                        const gameId = game.gameId || game.game_id || 'multiplayer-session';
+                        console.log('✅ Valid entry: Multiplayer game', gameId);
+                    } else {
+                        console.warn('⚠️ Missing isMultiplayer flag');
+                    }
+                } catch (e) {
+                    console.error('Invalid multiplayer game data:', e);
+                }
+            }
+
+            // Check if this is a Quick Start game (valid entry)
+            if (!isValidEntry && quizSettings && selectedThemes) {
+                try {
+                    const settings = JSON.parse(quizSettings);
+                    const themes = JSON.parse(selectedThemes);
+
+                    if (settings.timeLimit && settings.questionCount && Array.isArray(themes) && themes.length > 0) {
+                        isValidEntry = true;
+                        console.log('✅ Valid entry: Quick Start with settings');
+                    }
+                } catch (e) {
+                    console.error('Invalid quiz settings or themes');
+                }
+            }
+
+            // Redirect if invalid entry
+            if (!isValidEntry) {
+                console.warn('⚠️ Invalid entry point detected - redirecting to home page');
+                alert('Please start a quiz from the home page using Quick Start or Multiplayer.');
+                window.location.href = '/';
+                return;
+            }
+
+            // Check if this is a multiplayer game
+            let isMultiplayerGame = false;
+            if (multiplayerGame) {
+                try {
+                    const game = JSON.parse(multiplayerGame);
+                    isMultiplayerGame = game.isMultiplayer === true;
+                } catch (e) {
+                    console.error('Error parsing multiplayer game:', e);
+                }
+            }
+
+            // Skip active game session check for multiplayer (it has its own session management)
+            if (!isMultiplayerGame) {
+                console.log('🎮 Single player mode - checking for active game session...');
+
+                // 🧹 Clean up any stale multiplayer data in single player mode
+                console.log('🧹 Cleaning up stale multiplayer data...');
+                localStorage.removeItem('multiplayerGame');
+                localStorage.removeItem('currentRoomCode');
+                localStorage.removeItem('currentGameURL');
+                console.log('✅ Stale multiplayer data cleared');
+                try {
+                    const checkResponse = await fetch('/api/game/check-active');
+                    if (checkResponse.ok) {
+                        const checkData = await checkResponse.json();
+                        if (checkData.success && checkData.hasActive) {
+                            // User already has an active game
+                            const proceed = confirm('You are already playing a game in another tab. Do you want to continue that game here?\n\nClick OK to resume, or Cancel to go back home.');
+                            if (!proceed) {
+                                window.location.href = '/';
+                                return;
+                            }
+                        }
+                    }
+
+                    // Start new game session
+                    const startResponse = await fetch('/api/game/start', { method: 'POST' });
+                    if (startResponse.status === 409) {
+                        // Already playing
+                        alert('You are already playing a game. Please finish that game first.');
+                        window.location.href = '/';
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Failed to check game session:', error);
+                }
+            } else {
+                console.log('🌐 Multiplayer mode - skipping active game session check');
+            }
+
+            await loadPreferencesFromDatabase(); // Load from DB first
+
             const scoreboard = document.getElementById('scoreboard');
             const opponentCard = document.getElementById('opponentPlayerScore');
 
@@ -1645,7 +2121,7 @@
                         console.warn('[Quiz] Missing multiplayer identifiers');
                     }
                     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                    const game = JSON.parse(localStorage.getItem('multiplayerGame') || '{}');
+                    // game is already defined above, no need to redefine
                     const playerId = localStorage.getItem('playerId');
                     const username = localStorage.getItem('playerName') || 'Player';
 
@@ -1655,23 +2131,21 @@
 
                     MultiplayerState.ws.onopen = () => {
                         const gameId = game.gameId || game.game_id;
-                        const participantId = game.participantId || game.participant_id;
 
-                        if (gameId && participantId) {
+                        if (gameId) {
+                            // Send reconnect message to rejoin the game room
+                            console.log('🔄 Reconnecting to game:', gameId);
                             MultiplayerState.ws.send(JSON.stringify({
                                 type: 'reconnect',
-                                payload: { game_id: gameId, participant_id: participantId }
+                                payload: { game_id: gameId }
                             }));
                         } else {
                             const rc = MultiplayerState.roomCode;
                             if (rc) {
+                                console.log('🚪 Joining room:', rc);
                                 MultiplayerState.ws.send(JSON.stringify({
                                     type: 'join_room',
                                     payload: { room_code: rc }
-                                }));
-                                MultiplayerState.ws.send(JSON.stringify({
-                                    type: 'join_room',
-                                    roomCode: rc
                                 }));
                             }
                         }
@@ -1746,7 +2220,7 @@
                         MultiplayerState.opponentName = game.opponentName;
                         const opponentNameEl = document.getElementById('opponentPlayerName');
                         const opponentAvatarEl = document.getElementById('opponentPlayerAvatar');
-                        if (opponentNameEl) opponentNameEl.textContent = game.opponentName;
+                        if (opponentNameEl) opponentNameEl.textContent = '@' + game.opponentName;
                         if (opponentAvatarEl) {
                             opponentAvatarEl.textContent = game.opponentName.charAt(0).toUpperCase();
                         }
@@ -1756,7 +2230,7 @@
                     if (currentUser.username) {
                         const currentNameEl = document.getElementById('currentPlayerName');
                         const currentAvatarEl = document.getElementById('currentPlayerAvatar');
-                        if (currentNameEl) currentNameEl.textContent = currentUser.username;
+                        if (currentNameEl) currentNameEl.textContent = '@' + currentUser.username;
                         if (currentAvatarEl) {
                             currentAvatarEl.textContent = currentUser.username.charAt(0).toUpperCase();
                         }
@@ -1769,9 +2243,19 @@
                 if (scoreboard) scoreboard.classList.remove('show');
                 if (opponentCard) opponentCard.style.display = 'none';
             }
-            
-            initQuiz();
+
+            startQuiz();
         });
+
+        function openAboutModal() {
+            const modal = document.getElementById('aboutModal');
+            if (modal) modal.classList.add('show');
+        }
+
+        function closeAboutModal() {
+            const modal = document.getElementById('aboutModal');
+            if (modal) modal.classList.remove('show');
+        }
     </script>
 </body>
 </html>

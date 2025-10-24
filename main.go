@@ -2,14 +2,14 @@
 package main
 
 import (
+	"log"
+	"os"
+	"time"
 	"ubible/database"
 	"ubible/handlers"
 	"ubible/handlers/admin"
 	"ubible/middleware"
 	"ubible/services"
-	"log"
-	"os"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -30,6 +30,9 @@ func main() {
 
 	// Initialize database
 	database.InitDB()
+
+	// Initialize team handlers
+	handlers.InitTeamHandlers()
 
 	// Load verses from files
 	log.Println("Loading verses from files...")
@@ -82,6 +85,7 @@ func main() {
 	app.Static("/css", "./static/css")
 	app.Static("/js", "./static/js")
 	app.Static("/admin", "./static/admin")
+	app.Static("/verses", "./verses")
 
 	// API Routes
 	api := app.Group("/api")
@@ -92,11 +96,14 @@ func main() {
 	authGroup.Post("/guest", handlers.GuestLogin)
 	authGroup.Post("/login", handlers.Login)
 	authGroup.Post("/register", handlers.Register)
-	authGroup.Post("/upgrade", handlers.UpgradeGuest)
+	authGroup.Post("/upgrade", middleware.AuthMiddleware, handlers.UpgradeGuest)
+	authGroup.Get("/preferences", middleware.AuthMiddleware, handlers.GetPreferences)
+	authGroup.Post("/preferences", middleware.AuthMiddleware, handlers.SavePreferences)
 
 	// Theme routes
 	api.Get("/themes", handlers.GetThemes)
-	api.Post("/themes", middleware.AuthMiddleware, handlers.CreateTheme)
+	api.Post("/themes", handlers.CreatePublicTheme) // Public theme creation (no auth required)
+	api.Post("/themes/generate", handlers.GenerateTheme) // Generate theme from keywords (no auth required)
 	api.Get("/themes/:id", handlers.GetTheme)
 	api.Put("/themes/:id", middleware.AuthMiddleware, handlers.UpdateTheme)
 	api.Delete("/themes/:id", middleware.AuthMiddleware, handlers.DeleteTheme)
@@ -110,6 +117,15 @@ func main() {
 
 	// Practice routes
 	api.Get("/practice/cards", handlers.GetPracticeCards)
+
+	// Stats routes
+	api.Get("/stats/players", handlers.GetOnlinePlayersCount)
+	api.Get("/stats/last-played", handlers.GetLastPlayedTime)
+
+	// Game session routes
+	api.Get("/game/check-active", handlers.CheckActiveGame)
+	api.Post("/game/start", handlers.StartGameSession)
+	api.Post("/game/end", handlers.EndGameSession)
 
 	// User routes (require authentication)
 	userGroup := api.Group("/users")
@@ -157,6 +173,40 @@ func main() {
 	leaderboardGroup.Get("/user/:id", handlers.GetUserRank)
 	leaderboardGroup.Get("/around/:id", handlers.GetLeaderboardAroundUser)
 
+	// Team Portal routes
+	teamGroup := api.Group("/teams")
+	teamGroup.Use(middleware.AuthMiddleware)
+
+	// Public team routes (no auth required)
+	api.Get("/teams/public", handlers.GetPublicTeams)
+	api.Get("/teams/popular", handlers.GetPopularTeams)
+	teamGroup.Post("/", handlers.CreateTeam)
+	teamGroup.Get("/", handlers.GetUserTeams)
+	teamGroup.Get("/search", handlers.SearchTeams)
+	teamGroup.Get("/:id", handlers.GetTeam)
+	teamGroup.Put("/:id", handlers.UpdateTeam)
+	teamGroup.Delete("/:id", handlers.DeleteTeam)
+	teamGroup.Post("/join", handlers.JoinTeam)
+	teamGroup.Post("/:id/leave", handlers.LeaveTeam)
+	teamGroup.Get("/:id/members", handlers.GetTeamMembers)
+	teamGroup.Delete("/:id/members/:memberId", handlers.RemoveMember)
+	teamGroup.Put("/:id/members/:memberId/promote", handlers.PromoteMember)
+	teamGroup.Put("/:id/members/:memberId/demote", handlers.DemoteMember)
+	teamGroup.Put("/:id/transfer", handlers.TransferOwnership)
+	teamGroup.Get("/:id/leaderboard", handlers.GetTeamLeaderboard)
+	teamGroup.Get("/:id/stats", handlers.GetTeamStats)
+	teamGroup.Get("/:id/check-membership", handlers.CheckMembership)
+
+	// Team Theme routes
+	teamGroup.Post("/:id/themes", handlers.CreateTeamTheme)
+	teamGroup.Get("/:id/themes", handlers.GetTeamThemes)
+	teamGroup.Get("/themes", handlers.GetUserTeamThemes) // Get all themes from user's teams
+
+	// Team Challenge routes
+	teamGroup.Post("/:id/challenges", handlers.CreateChallenge)
+	teamGroup.Get("/:id/challenges", handlers.GetTeamChallenges)
+	teamGroup.Get("/challenges", handlers.GetUserTeamChallenges) // Get all challenges from user's teams
+
 	// Admin routes
 	adminGroup := api.Group("/admin")
 	adminGroup.Post("/login", admin.Login)
@@ -181,6 +231,8 @@ func main() {
 	adminProtected.Post("/themes", admin.CreateAdminTheme)
 	adminProtected.Put("/themes/:id", admin.UpdateAdminTheme)
 	adminProtected.Delete("/themes/:id", admin.DeleteAdminTheme)
+	// Admin endpoint for bulk verse theme creation
+	adminProtected.Post("/themes/from-verses", handlers.CreateThemeFromVerses)
 
 	// Admin achievement management
 	adminProtected.Get("/achievements", admin.GetAchievements)
@@ -192,10 +244,37 @@ func main() {
 	adminProtected.Get("/challenges", admin.GetChallenges)
 	adminProtected.Post("/challenges", admin.CreateChallenge)
 	adminProtected.Put("/challenges/:id", admin.UpdateChallenge)
-	// WebSocket for multiplayer
-	app.Get("/ws", websocket.New(handlers.HandleWebSocket))
 	adminProtected.Delete("/challenges/:id", admin.DeleteChallenge)
 
+	// WebSocket for multiplayer (using gofiber/websocket)
+	app.Use("/ws", func(c *fiber.Ctx) error {
+		// IsWebSocketUpgrade returns true if the client
+		// requested upgrade to the WebSocket protocol.
+		if websocket.IsWebSocketUpgrade(c) {
+			c.Locals("allowed", true)
+			return c.Next()
+		}
+		return fiber.ErrUpgradeRequired
+	})
+
+	app.Get("/ws", websocket.New(func(c *websocket.Conn) {
+		// Get query parameters from the initial HTTP request
+		playerID := c.Query("player_id")
+		username := c.Query("username")
+
+		log.Printf("WebSocket connected: %s (%s)", username, playerID)
+
+		// Handle the WebSocket connection
+		handlers.HandleFiberWebSocket(c, playerID, username)
+	}))
+
+	// Debug endpoints for troubleshooting multiplayer (remove in production)
+	api.Get("/debug/rooms", handlers.GetActiveRooms)
+	api.Get("/debug/rooms/:code", handlers.GetRoomByCode)
+	api.Get("/debug/sessions", handlers.GetGameSessions)
+
+	// Secure game URL route (Chess.com-style)
+	app.Get("/game/:gameID", handlers.HandleGameURL)
 
 	// HTML routes
 	app.Get("/", serveFile("./static/index.html"))
@@ -211,6 +290,12 @@ func main() {
 	app.Get("/shop.html", serveFile("./static/shop.html"))
 	app.Get("/login", serveFile("./static/login.html"))
 	app.Get("/login.html", serveFile("./static/login.html"))
+	app.Get("/teams", serveFile("./static/teams.html"))
+	app.Get("/teams.html", serveFile("./static/teams.html"))
+	app.Get("/ai-theme-maker", serveFile("./static/ai-theme-maker.html"))
+	app.Get("/ai-theme-maker.html", serveFile("./static/ai-theme-maker.html"))
+	app.Get("/theme-maker", serveFile("./static/theme-maker.html"))
+	app.Get("/theme-maker.html", serveFile("./static/theme-maker.html"))
 
 	// Admin HTML routes
 	app.Get("/admin", serveFile("./static/admin/index.html"))

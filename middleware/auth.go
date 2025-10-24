@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 	"time"
+	"ubible/database"
+	"ubible/models"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
@@ -24,7 +26,7 @@ func AuthMiddleware(c *fiber.Ctx) error {
 	tokenString := parts[1]
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
-		return c.Status(500).JSON(fiber.Map{"error": "Server configuration error"})
+		jwtSecret = "ubible-secret-change-in-production"
 	}
 
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
@@ -51,6 +53,9 @@ func AuthMiddleware(c *fiber.Ctx) error {
 	c.Locals("userId", claims["user_id"])
 	c.Locals("username", claims["username"])
 	c.Locals("isGuest", claims["is_guest"])
+
+	// Update user's last activity
+	updateUserActivity(claims["user_id"])
 
 	return c.Next()
 }
@@ -138,4 +143,31 @@ func IsGuest(c *fiber.Ctx) bool {
 	}
 
 	return false
+}
+
+// updateUserActivity updates the user's last activity timestamp
+func updateUserActivity(userID interface{}) {
+	if userID == nil {
+		return
+	}
+
+	db := database.GetDB()
+	if db == nil {
+		return
+	}
+
+	// Convert userID to uint
+	var id uint
+	switch v := userID.(type) {
+	case float64:
+		id = uint(v)
+	case uint:
+		id = v
+	default:
+		return
+	}
+
+	// Update last activity timestamp
+	now := time.Now()
+	db.Model(&models.User{}).Where("id = ?", id).Update("last_activity", now)
 }

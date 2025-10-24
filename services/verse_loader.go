@@ -14,7 +14,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"unicode"
 
 	"gorm.io/gorm"
 )
@@ -254,7 +253,7 @@ func LoadVersesFromTXT() error {
 	return nil
 }
 
-func parseVerseFile(filePath string, allowDirect bool) ([]Verse, []int, error) {
+func parseVerseFile(filePath string, _ bool) ([]Verse, []int, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to open file: %w", err)
@@ -353,7 +352,7 @@ func parseQAFormat(db *gorm.DB, theme models.Theme, filePath string) error {
 	return nil
 }
 
-func generateQuestionsFromVerses(db *gorm.DB, theme models.Theme, verses []Verse, generateCompletion bool) error {
+func generateQuestionsFromVerses(db *gorm.DB, theme models.Theme, verses []Verse, _ bool) error {
 	if len(verses) < 4 {
 		return fmt.Errorf("not enough verses to generate questions (need at least 4, got %d)", len(verses))
 	}
@@ -361,13 +360,12 @@ func generateQuestionsFromVerses(db *gorm.DB, theme models.Theme, verses []Verse
 	questionsCreated := 0
 
 	for i, verse := range verses {
+		// Generate 2 questions per verse:
+		// Q1: Verse text → pick reference
+		// Q2: Reference → pick verse text
 		questions := []models.Question{
-			generateReferenceQuestion(verse, verses, i),
-		}
-		if generateCompletion {
-			if q := generateVerseCompletionQuestion(verse, verses, i); q.Text != "" {
-				questions = append(questions, q)
-			}
+			generateVerseToReferenceQuestion(verse, verses, i, db),
+			generateReferenceToVerseQuestion(verse, verses, i, db),
 		}
 
 		for _, question := range questions {
@@ -393,28 +391,16 @@ func generateQuestionsFromVerses(db *gorm.DB, theme models.Theme, verses []Verse
 	return nil
 }
 
-func generateReferenceQuestion(correct Verse, allVerses []Verse, excludeIndex int) models.Question {
-	randomVerses := getRandomVerses(allVerses, excludeIndex, 3)
-	if len(randomVerses) < 3 {
-		return models.Question{}
-	}
+// generateVerseToReferenceQuestion: Shows verse text → user picks reference
+func generateVerseToReferenceQuestion(correct Verse, allVerses []Verse, _ int, db *gorm.DB) models.Question {
+	wrongRefs := generateWrongReferencesFromDB(db, correct.Reference, allVerses)
+	wrongAnswersJSON, _ := json.Marshal(dedup(wrongRefs))
 
-	options := []string{strings.TrimSpace(correct.Reference)}
-	for _, v := range randomVerses {
-		options = append(options, strings.TrimSpace(v.Reference))
-	}
-
-	shuffleStrings(options)
-	wrongAnswers := make([]string, 0, 3)
-	for _, opt := range options {
-		if opt != strings.TrimSpace(correct.Reference) {
-			wrongAnswers = append(wrongAnswers, opt)
-		}
-	}
-	wrongAnswersJSON, _ := json.Marshal(dedup(wrongAnswers))
+	cleanText := strings.TrimPrefix(correct.Text, "- ")
+	cleanText = strings.TrimSpace(cleanText)
 
 	return models.Question{
-		Text:          strings.TrimSpace(correct.Text),
+		Text:          cleanText,
 		CorrectAnswer: strings.TrimSpace(correct.Reference),
 		WrongAnswers:  string(wrongAnswersJSON),
 		Reference:     strings.TrimSpace(correct.Reference),
@@ -422,77 +408,96 @@ func generateReferenceQuestion(correct Verse, allVerses []Verse, excludeIndex in
 	}
 }
 
-func splitAtWordBoundary(s string) (first, second string) {
-	runes := []rune(strings.TrimSpace(s))
-	if len(runes) == 0 {
-		return "", ""
-	}
-	mid := len(runes) / 2
+// generateReferenceToVerseQuestion: Shows reference → user picks verse text
+func generateReferenceToVerseQuestion(correct Verse, allVerses []Verse, _ int, db *gorm.DB) models.Question {
+	cleanText := strings.TrimPrefix(correct.Text, "- ")
+	cleanText = strings.TrimSpace(cleanText)
 
-	i := mid
-	for i > 0 && !unicode.IsSpace(runes[i]) {
-		i--
-	}
-	if i == 0 {
-		i = mid
-		for i < len(runes) && !unicode.IsSpace(runes[i]) {
-			i++
-		}
-		if i >= len(runes) {
-			i = mid
-		}
-	}
-
-	first = strings.TrimSpace(string(runes[:i]))
-	second = strings.TrimSpace(string(runes[i:]))
-	return
-}
-
-func generateVerseCompletionQuestion(correct Verse, allVerses []Verse, excludeIndex int) models.Question {
-	trimmed := strings.TrimSpace(correct.Text)
-	if len([]rune(trimmed)) < 40 {
-		return models.Question{}
-	}
-
-	firstPart, secondPart := splitAtWordBoundary(trimmed)
-	if firstPart == "" || secondPart == "" {
-		return models.Question{}
-	}
-
-	randomVerses := getRandomVerses(allVerses, excludeIndex, 3)
-	options := []string{secondPart}
-
-	for _, v := range randomVerses {
-		vtrim := strings.TrimSpace(v.Text)
-		if len([]rune(vtrim)) < 40 {
-			continue
-		}
-		_, wrongEnd := splitAtWordBoundary(vtrim)
-		if wrongEnd != "" {
-			options = append(options, wrongEnd)
-		}
-	}
-	if len(options) < 4 {
-		return models.Question{}
-	}
-
-	shuffleStrings(options)
-	wrongAnswers := make([]string, 0, 3)
-	for _, opt := range options {
-		if opt != secondPart {
-			wrongAnswers = append(wrongAnswers, opt)
-		}
-	}
-	wrongAnswersJSON, _ := json.Marshal(dedup(wrongAnswers))
+	wrongTexts := generateWrongVersesFromDB(db, cleanText, correct.Reference, allVerses)
+	wrongAnswersJSON, _ := json.Marshal(dedup(wrongTexts))
 
 	return models.Question{
-		Text:          fmt.Sprintf("Complete this verse: %s…", firstPart),
-		CorrectAnswer: secondPart,
+		Text:          strings.TrimSpace(correct.Reference),
+		CorrectAnswer: cleanText,
 		WrongAnswers:  string(wrongAnswersJSON),
 		Reference:     strings.TrimSpace(correct.Reference),
-		Difficulty:    "hard",
+		Difficulty:    "medium",
 	}
 }
+
+// Unused function - kept for future use
+// func splitAtWordBoundary(s string) (first, second string) {
+// 	runes := []rune(strings.TrimSpace(s))
+// 	if len(runes) == 0 {
+// 		return "", ""
+// 	}
+// 	mid := len(runes) / 2
+
+// 	i := mid
+// 	for i > 0 && !unicode.IsSpace(runes[i]) {
+// 		i--
+// 	}
+// 	if i == 0 {
+// 		i = mid
+// 		for i < len(runes) && !unicode.IsSpace(runes[i]) {
+// 			i++
+// 		}
+// 		if i >= len(runes) {
+// 			i = mid
+// 		}
+// 	}
+
+// 	first = strings.TrimSpace(string(runes[:i]))
+// 	second = strings.TrimSpace(string(runes[i:]))
+// 	return
+// }
+
+// Unused function - kept for future use
+// func generateVerseCompletionQuestion(correct Verse, allVerses []Verse, excludeIndex int) models.Question {
+// 	trimmed := strings.TrimSpace(correct.Text)
+// 	if len([]rune(trimmed)) < 40 {
+// 		return models.Question{}
+// 	}
+
+// 	firstPart, secondPart := splitAtWordBoundary(trimmed)
+// 	if firstPart == "" || secondPart == "" {
+// 		return models.Question{}
+// 	}
+
+// 	randomVerses := getRandomVerses(allVerses, excludeIndex, 3)
+// 	options := []string{secondPart}
+
+// 	for _, v := range randomVerses {
+// 		vtrim := strings.TrimSpace(v.Text)
+// 		if len([]rune(vtrim)) < 40 {
+// 			continue
+// 		}
+// 		_, wrongEnd := splitAtWordBoundary(vtrim)
+// 		if wrongEnd != "" {
+// 			options = append(options, wrongEnd)
+// 		}
+// 	}
+// 	if len(options) < 4 {
+// 		return models.Question{}
+// 	}
+
+// 	shuffleStrings(options)
+// 	wrongAnswers := make([]string, 0, 3)
+// 	for _, opt := range options {
+// 		if opt != secondPart {
+// 			wrongAnswers = append(wrongAnswers, opt)
+// 		}
+// 	}
+// 	wrongAnswersJSON, _ := json.Marshal(dedup(wrongAnswers))
+
+// 	return models.Question{
+// 		Text:          fmt.Sprintf("Complete this verse: %s…", firstPart),
+// 		CorrectAnswer: secondPart,
+// 		WrongAnswers:  string(wrongAnswersJSON),
+// 		Reference:     strings.TrimSpace(correct.Reference),
+// 		Difficulty:    "hard",
+// 	}
+// }
 
 func saveQuestion(db *gorm.DB, question *models.Question, options []string) error {
 	if question == nil || len(options) == 0 {
@@ -555,11 +560,12 @@ func getRandomVerses(verses []Verse, excludeIndex int, count int) []Verse {
 	return available[:count]
 }
 
-func shuffleStrings(slice []string) {
-	rand.Shuffle(len(slice), func(i, j int) {
-		slice[i], slice[j] = slice[j], slice[i]
-	})
-}
+// Unused function - kept for future use
+// func shuffleStrings(slice []string) {
+// 	rand.Shuffle(len(slice), func(i, j int) {
+// 		slice[i], slice[j] = slice[j], slice[i]
+// 	})
+// }
 
 func dedup(in []string) []string {
 	seen := make(map[string]struct{}, len(in))
@@ -712,3 +718,65 @@ func CleanupDeletedThemes() error {
 }
 
 func InitVerseService() {}
+
+// generateWrongReferencesFromDB generates wrong references from same theme verses
+func generateWrongReferencesFromDB(_ *gorm.DB, correctRef string, themeVerses []Verse) []string {
+	wrong := []string{}
+	used := map[string]bool{correctRef: true}
+
+	// Get all other verses from the same theme
+	randomVerses := getRandomVerses(themeVerses, -1, len(themeVerses))
+	for _, v := range randomVerses {
+		if len(wrong) >= 3 {
+			break
+		}
+		if !used[v.Reference] && v.Reference != correctRef {
+			wrong = append(wrong, v.Reference)
+			used[v.Reference] = true
+		}
+	}
+
+	// Fallback: generate random references if not enough verses in theme
+	if len(wrong) < 3 {
+		books := []string{"John", "Matthew", "Mark", "Luke", "Romans", "Genesis", "Psalms", "Proverbs", "Isaiah", "Jeremiah"}
+		for len(wrong) < 3 {
+			book := books[rand.Intn(len(books))]
+			chapter := rand.Intn(20) + 1
+			verse := rand.Intn(30) + 1
+			ref := fmt.Sprintf("%s %d:%d", book, chapter, verse)
+			if !used[ref] {
+				wrong = append(wrong, ref)
+				used[ref] = true
+			}
+		}
+	}
+
+	return wrong
+}
+
+// generateWrongVersesFromDB generates wrong verse texts from same theme verses
+func generateWrongVersesFromDB(_ *gorm.DB, correctText string, _ string, themeVerses []Verse) []string {
+	wrong := []string{}
+	used := map[string]bool{correctText: true}
+
+	// Get all other verses from the same theme
+	randomVerses := getRandomVerses(themeVerses, -1, len(themeVerses))
+	for _, v := range randomVerses {
+		if len(wrong) >= 3 {
+			break
+		}
+		cleanText := strings.TrimPrefix(v.Text, "- ")
+		cleanText = strings.TrimSpace(cleanText)
+		if !used[cleanText] && cleanText != correctText && cleanText != "" {
+			wrong = append(wrong, cleanText)
+			used[cleanText] = true
+		}
+	}
+
+	// Fallback: generate generic text if not enough verses in theme
+	for len(wrong) < 3 {
+		wrong = append(wrong, fmt.Sprintf("Alternative verse text %d", len(wrong)+1))
+	}
+
+	return wrong
+}

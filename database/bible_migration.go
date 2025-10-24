@@ -5,7 +5,7 @@ import (
 	"gorm.io/gorm"
 )
 
-type U BibleVerse struct {
+type UBibleVerse struct {
 	ID          uint   `gorm:"primaryKey"`
 	Book        string `gorm:"index;not null"`
 	Chapter     int    `gorm:"index;not null"`
@@ -14,6 +14,6 @@ type U BibleVerse struct {
 	Translation string `gorm:"index;default:'KJV'"`
 }
 
-func MigrateU BibleVerses(db *gorm.DB) error {
-	return db.AutoMigrate(&U BibleVerse{})
+func MigrateUBibleVerses(db *gorm.DB) error {
+	return db.AutoMigrate(&UBibleVerse{})
 }

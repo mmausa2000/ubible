@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #4CAF50;
+        }
+        .log {
+            padding: 5px;
+            margin: 2px 0;
+            border-left: 3px solid #4CAF50;
+            padding-left: 10px;
+        }
+        .error {
+            border-left-color: #f44336;
+            color: #f44336;
+        }
+        .success {
+            border-left-color: #4CAF50;
+            color: #4CAF50;
+        }
+        .info {
+            border-left-color: #2196F3;
+            color: #2196F3;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebSocket Connection Test</h1>
+    <div id="status">Connecting...</div>
+    <div id="logs"></div>
+
+    <script>
+        const logsDiv = document.getElementById('logs');
+        const statusDiv = document.getElementById('status');
+
+        function log(message, type = 'info') {
+            const logEntry = document.createElement('div');
+            logEntry.className = `log ${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logsDiv.appendChild(logEntry);
+            console.log(message);
+        }
+
+        // Auto-connect on load
+        const playerID = 'test_' + Math.random().toString(36).substr(2, 9);
+        const username = 'TestPlayer';
+        const wsURL = `ws://localhost:3000/ws?player_id=${playerID}&username=${username}`;
+
+        log(`Attempting connection to: ${wsURL}`, 'info');
+
+        const ws = new WebSocket(wsURL);
+
+        ws.onopen = () => {
+            statusDiv.textContent = 'Connected ✓';
+            statusDiv.style.color = '#4CAF50';
+            log('WebSocket connection opened!', 'success');
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            log(`Received: ${JSON.stringify(data, null, 2)}`, 'success');
+
+            if (data.type === 'connected') {
+                log(`Successfully connected with player_id: ${data.payload.player_id}`, 'success');
+            }
+        };
+
+        ws.onerror = (error) => {
+            statusDiv.textContent = 'Error ✗';
+            statusDiv.style.color = '#f44336';
+            log(`WebSocket error: ${error}`, 'error');
+        };
+
+        ws.onclose = (event) => {
+            statusDiv.textContent = 'Disconnected ✗';
+            statusDiv.style.color = '#f44336';
+            log(`WebSocket closed: Code ${event.code}, Reason: ${event.reason}`, 'error');
+        };
+
+        // Send a test message after 2 seconds
+        setTimeout(() => {
+            if (ws.readyState === WebSocket.OPEN) {
+                log('Sending test ping...', 'info');
+                ws.send(JSON.stringify({ type: 'ping', payload: {} }));
+            }
+        }, 2000);
+    </script>
+</body>
+</html>

@@ -2,10 +2,10 @@
 package handlers
 
 import (
-	"ubible/database"
-	"ubible/models"
 	"regexp"
 	"strings"
+	"ubible/database"
+	"ubible/models"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -21,8 +21,8 @@ type PracticeCard struct {
 // 1) Reference question: Which reference is this verse from? "…verse…"
 var refQRe = regexp.MustCompile(`^Which reference is this verse from\?\s*"(.*)"\s*$`)
 
-// 2) Completion (dash or colon; unicode or ascii ellipsis)
-//    Examples: `Book c:v — "first…"` OR `Book c:v: "first..."`
+//  2. Completion (dash or colon; unicode or ascii ellipsis)
+//     Examples: `Book c:v — "first…"` OR `Book c:v: "first..."`
 var compDashColonRe = regexp.MustCompile(
 	`^([1-3]?\s*[A-Za-z]+(?:\s+[A-Za-z]+)*\s+\d+:\d+)\s+[-—–:]\s*"(.*?)(?:\.{3}|…)"\s*$`,
 )
@@ -41,19 +41,19 @@ func reconstructVerse(q models.Question) (string, bool) {
 	txt := strings.TrimSpace(q.Text)
 
 	// Reference question carries the full verse in quotes
-	if m := refQRe.FindStringSubmatch(txt); m != nil && len(m) > 1 {
+	if m := refQRe.FindStringSubmatch(txt); len(m) > 1 {
 		return strings.TrimSpace(m[1]), true
 	}
 
 	// Completion (dash/colon variant): glue first part + correct answer
-	if m := compDashColonRe.FindStringSubmatch(txt); m != nil && len(m) > 2 && strings.TrimSpace(q.CorrectAnswer) != "" {
+	if m := compDashColonRe.FindStringSubmatch(txt); len(m) > 2 && strings.TrimSpace(q.CorrectAnswer) != "" {
 		first := strings.TrimSpace(m[2])
 		second := strings.TrimSpace(q.CorrectAnswer)
 		return strings.TrimSpace(first + " " + second), true
 	}
 
 	// Completion (prefix variant): glue first part + correct answer
-	if m := compPrefixRe.FindStringSubmatch(txt); m != nil && len(m) > 1 && strings.TrimSpace(q.CorrectAnswer) != "" {
+	if m := compPrefixRe.FindStringSubmatch(txt); len(m) > 1 && strings.TrimSpace(q.CorrectAnswer) != "" {
 		first := strings.TrimSpace(m[1])
 		second := strings.TrimSpace(q.CorrectAnswer)
 		return strings.TrimSpace(first + " " + second), true
@@ -92,9 +92,9 @@ func GetPracticeCards(c *fiber.Ctx) error {
 	seen := map[string]struct{}{} // dedupe by (reference, verse_text)
 
 	for _, q := range questions {
-		themeName := ""
-		if q.Theme.ID != 0 {
-			themeName = q.Theme.Name
+		themeName := q.ThemeName // Use denormalized field
+		if themeName == "" && q.Theme.ID != 0 {
+			themeName = q.Theme.Name // Fallback to relationship if needed
 		}
 		verseText, _ := reconstructVerse(q)
 		if verseText == "" {

@@ -24,14 +24,14 @@ type Challenge struct {
 	Description     string          `json:"description" gorm:"type:text"`
 	ThemeID         uint            `json:"theme_id" gorm:"index"`
 	Theme           *TeamTheme      `json:"theme,omitempty" gorm:"foreignKey:ThemeID"`
-	QuestionCount   int             `json:"question_count" gorm:"not null;default:10"`
+	NumQuestions    int             `json:"num_questions" gorm:"column:question_count;not null;default:10"` // Alias as num_questions
 	TimeLimit       int             `json:"time_limit" gorm:"not null;default:30"`
 	StartDate       time.Time       `json:"start_date"`
 	EndDate         time.Time       `json:"end_date"`
 	MinParticipants int             `json:"min_participants" gorm:"default:2"`
 	MaxParticipants int             `json:"max_participants" gorm:"default:0"`
 	Status          ChallengeStatus `json:"status" gorm:"not null;default:'pending';index"`
-	CreatedBy       uint            `json:"created_by" gorm:"not null"`
+	CreatedBy       uint            `json:"created_by_user_id" gorm:"column:created_by;not null"` // JSON shows as created_by_user_id
 	CreatedAt       time.Time       `json:"created_at" gorm:"not null"`
 	UpdatedAt       time.Time       `json:"updated_at"`
 	StartedAt       *time.Time      `json:"started_at"`

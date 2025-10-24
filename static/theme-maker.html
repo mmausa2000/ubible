@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Theme Maker - U Bible Quiz</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 50%, #16213e 100%);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            position: relative;
+        }
+
+        .container {
+            width: 95%;
+            max-width: 1500px;
+            height: 90vh;
+            max-height: 850px;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow-y: auto;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .header h1 {
+            font-size: 2.2rem;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #4caf50, #66bb6a);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1rem;
+            margin-bottom: 12px;
+        }
+
+        .header .nav-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4caf50, #66bb6a);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(76, 175, 80, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .search-card {
+            background: linear-gradient(135deg, #2a3050 0%, #3a4570 100%);
+            backdrop-filter: blur(20px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .search-card h2 {
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.9rem;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-size: 0.95rem;
+        }
+
+        .form-group input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 15px;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .result-card {
+            background: linear-gradient(135deg, #2a3050 0%, #3a4570 100%);
+            backdrop-filter: blur(20px);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-height: 450px;
+            overflow-y: auto;
+        }
+
+        .result-card h3 {
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .verse-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 3px solid #4caf50;
+        }
+
+        .verse-ref {
+            font-weight: 700;
+            color: #66bb6a;
+            margin-bottom: 8px;
+        }
+
+        .verse-text {
+            color: rgba(255, 255, 255, 0.85);
+            line-height: 1.6;
+        }
+
+        .theme-content {
+            line-height: 1.8;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .theme-content h4 {
+            color: #66bb6a;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .theme-content p {
+            margin-bottom: 15px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid #4caf50;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .example-queries {
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            border-radius: 10px;
+            padding: 12px 15px;
+            margin-bottom: 15px;
+        }
+
+        .example-queries h4 {
+            color: #66bb6a;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .example-queries ul {
+            list-style: none;
+            padding-left: 0;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .example-queries li {
+            color: rgba(255, 255, 255, 0.7);
+            padding: 4px 0;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .example-queries li:hover {
+            color: #66bb6a;
+        }
+
+        .correction-notice {
+            background: rgba(102, 187, 106, 0.15);
+            border: 1px solid rgba(102, 187, 106, 0.4);
+            border-radius: 10px;
+            padding: 12px 15px;
+            margin-top: 12px;
+            font-size: 0.9rem;
+            color: #66bb6a;
+            display: none;
+        }
+
+        .correction-notice strong {
+            color: #4caf50;
+        }
+
+        @media (max-width: 968px) {
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AI Bible Theme Maker</h1>
+            <p>Search 31,100 verses and create custom themes instantly</p>
+            <div class="nav-buttons">
+                <a href="/" class="btn btn-secondary">← Back to Home</a>
+                <a href="/teams.html" class="btn btn-secondary">Teams Portal</a>
+            </div>
+        </div>
+
+        <div class="search-card">
+            <h2>Create Your Theme</h2>
+
+            <div class="example-queries">
+                <h4>✨ Try these:</h4>
+                <ul>
+                    <li onclick="fillExample('love', 20, 'NT')">• Love (NT, 20)</li>
+                    <li onclick="fillExample('faith', 15, 'OT')">• Faith (OT, 15)</li>
+                    <li onclick="fillExample('peace', 25, 'BOTH')">• Peace (Both, 25)</li>
+                    <li onclick="fillExample('hope', 30, 'BOTH')">• Hope (Both, 30)</li>
+                </ul>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Keyword(s)</label>
+                    <input type="text" id="keywords" placeholder="e.g., love, faith, peace">
+                </div>
+                <div class="form-group">
+                    <label>Number of Verses</label>
+                    <input type="number" id="count" value="20" min="5" max="100">
+                </div>
+                <div class="form-group">
+                    <label>Testament</label>
+                    <select id="testament">
+                        <option value="BOTH">Both</option>
+                        <option value="NT">New Testament</option>
+                        <option value="OT">Old Testament</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" onclick="generateTheme()" style="width: 100%; font-size: 1.2rem; padding: 18px;">
+                🔍 Search & Generate Theme
+            </button>
+
+            <div id="correctionNotice" class="correction-notice">
+                <strong>✨ Auto-corrected:</strong> <span id="correctionText"></span>
+            </div>
+        </div>
+
+        <div id="results" style="display: none;">
+            <div class="results-grid">
+                <div class="result-card">
+                    <h3>📖 Verses Found (<span id="verseCount">0</span>)</h3>
+                    <div id="versesList"></div>
+                </div>
+                <div class="result-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3>✨ Generated Theme</h3>
+                        <button class="btn btn-primary" onclick="saveTheme()" id="saveBtn">
+                            💾 Save Theme
+                        </button>
+                    </div>
+                    <div id="themeContent" class="theme-content"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Searching the Bible and generating your theme...</p>
+        </div>
+    </div>
+
+    <script>
+        // New Testament books
+        const NT_BOOKS = [
+            'Matthew', 'Mark', 'Luke', 'John', 'Acts', 'Romans', '1 Corinthians', '2 Corinthians',
+            'Galatians', 'Ephesians', 'Philippians', 'Colossians', '1 Thessalonians', '2 Thessalonians',
+            '1 Timothy', '2 Timothy', 'Titus', 'Philemon', 'Hebrews', 'James', '1 Peter', '2 Peter',
+            '1 John', '2 John', '3 John', 'Jude', 'Revelation'
+        ];
+
+        // All Bible books for spell checking
+        const ALL_BOOKS = [
+            // Old Testament
+            'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy', 'Joshua', 'Judges', 'Ruth',
+            '1 Samuel', '2 Samuel', '1 Kings', '2 Kings', '1 Chronicles', '2 Chronicles', 'Ezra',
+            'Nehemiah', 'Esther', 'Job', 'Psalms', 'Proverbs', 'Ecclesiastes', 'Song of Solomon',
+            'Isaiah', 'Jeremiah', 'Lamentations', 'Ezekiel', 'Daniel', 'Hosea', 'Joel', 'Amos',
+            'Obadiah', 'Jonah', 'Micah', 'Nahum', 'Habakkuk', 'Zephaniah', 'Haggai', 'Zechariah', 'Malachi',
+            // New Testament
+            'Matthew', 'Mark', 'Luke', 'John', 'Acts', 'Romans', '1 Corinthians', '2 Corinthians',
+            'Galatians', 'Ephesians', 'Philippians', 'Colossians', '1 Thessalonians', '2 Thessalonians',
+            '1 Timothy', '2 Timothy', 'Titus', 'Philemon', 'Hebrews', 'James', '1 Peter', '2 Peter',
+            '1 John', '2 John', '3 John', 'Jude', 'Revelation'
+        ];
+
+        let bibleData = null;
+        let currentTheme = null;
+        let currentVerses = [];
+        let dictionary = null;
+
+        // Load Bible data
+        fetch('/verses/kjv-full.json')
+            .then(res => res.json())
+            .then(data => {
+                bibleData = data;
+                console.log('✅ Bible loaded:', bibleData.length, 'books');
+            })
+            .catch(err => console.error('Error loading Bible:', err));
+
+        // Load dictionary for spell checking
+        fetch('/verses/words_dictionary.json')
+            .then(res => res.json())
+            .then(data => {
+                dictionary = data;
+                console.log('✅ Dictionary loaded:', Object.keys(dictionary).length, 'words');
+            })
+            .catch(err => console.error('Error loading dictionary:', err));
+
+        function fillExample(keyword, count, testament) {
+            document.getElementById('keywords').value = keyword;
+            document.getElementById('count').value = count;
+            document.getElementById('testament').value = testament;
+        }
+
+        // Levenshtein distance for spell checking
+        function levenshteinDistance(str1, str2) {
+            const len1 = str1.length;
+            const len2 = str2.length;
+            const matrix = Array(len1 + 1).fill(null).map(() => Array(len2 + 1).fill(0));
+
+            for (let i = 0; i <= len1; i++) matrix[i][0] = i;
+            for (let j = 0; j <= len2; j++) matrix[0][j] = j;
+
+            for (let i = 1; i <= len1; i++) {
+                for (let j = 1; j <= len2; j++) {
+                    const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+                    matrix[i][j] = Math.min(
+                        matrix[i - 1][j] + 1,      // deletion
+                        matrix[i][j - 1] + 1,      // insertion
+                        matrix[i - 1][j - 1] + cost // substitution
+                    );
+                }
+            }
+
+            return matrix[len1][len2];
+        }
+
+        // Find closest match for a word
+        function findClosestMatch(word, candidates) {
+            const wordLower = word.toLowerCase();
+            let bestMatch = null;
+            let bestDistance = Infinity;
+
+            for (const candidate of candidates) {
+                const candidateLower = candidate.toLowerCase();
+                const distance = levenshteinDistance(wordLower, candidateLower);
+
+                // Only consider if distance is small enough (max 2 character changes)
+                if (distance < bestDistance && distance <= 2) {
+                    bestDistance = distance;
+                    bestMatch = candidate;
+                }
+            }
+
+            return bestDistance <= 2 ? bestMatch : null;
+        }
+
+        // Correct spelling of keywords using dictionary and Bible books
+        function correctSpelling(keywords) {
+            if (!dictionary) {
+                console.log('Dictionary not loaded yet');
+                return { corrected: keywords, corrections: [] };
+            }
+
+            const corrections = [];
+            const keywordsArray = keywords.split(',').map(k => k.trim());
+            const correctedArray = [];
+
+            for (const keyword of keywordsArray) {
+                const keywordLower = keyword.toLowerCase();
+
+                // Check if it's a Bible book name (check first to prioritize books)
+                const bookMatch = findClosestMatch(keyword, ALL_BOOKS);
+                if (bookMatch && bookMatch.toLowerCase() !== keyword.toLowerCase()) {
+                    corrections.push(`"${keyword}" → "${bookMatch}"`);
+                    correctedArray.push(bookMatch);
+                    continue;
+                }
+
+                // Check if word exists in dictionary
+                if (dictionary[keywordLower]) {
+                    correctedArray.push(keyword);
+                    continue;
+                }
+
+                // Try to find closest match in dictionary
+                // Get a sample of words starting with same letter for performance
+                const firstLetter = keywordLower[0];
+                const candidates = Object.keys(dictionary).filter(w =>
+                    w.startsWith(firstLetter) && Math.abs(w.length - keywordLower.length) <= 2
+                );
+
+                let bestMatch = null;
+                let bestDistance = Infinity;
+
+                for (const candidate of candidates) {
+                    const distance = levenshteinDistance(keywordLower, candidate);
+                    if (distance < bestDistance && distance <= 2) {
+                        bestDistance = distance;
+                        bestMatch = candidate;
+                    }
+                }
+
+                if (bestMatch && bestDistance <= 2) {
+                    corrections.push(`"${keyword}" → "${bestMatch}"`);
+                    correctedArray.push(bestMatch);
+                } else {
+                    // Keep original if no good match found
+                    correctedArray.push(keyword);
+                }
+            }
+
+            return {
+                corrected: correctedArray.join(', '),
+                corrections: corrections
+            };
+        }
+
+        function searchBible(keywords, count, testament) {
+            if (!bibleData) {
+                alert('Bible data still loading, please wait...');
+                return [];
+            }
+
+            const results = [];
+            const keywordsArray = keywords.toLowerCase().split(',').map(k => k.trim());
+
+            bibleData.forEach(book => {
+                const isNT = NT_BOOKS.includes(book.name);
+                if (testament === 'NT' && !isNT) return;
+                if (testament === 'OT' && isNT) return;
+
+                book.chapters.forEach((chapter, chapterIndex) => {
+                    chapter.forEach((verseText, verseIndex) => {
+                        const verseTextLower = verseText.toLowerCase();
+                        const hasMatch = keywordsArray.some(keyword => verseTextLower.includes(keyword));
+
+                        if (hasMatch) {
+                            results.push({
+                                book: book.name,
+                                chapter: chapterIndex + 1,
+                                verse: verseIndex + 1,
+                                reference: `${book.name} ${chapterIndex + 1}:${verseIndex + 1}`,
+                                text: verseText.replace(/\{[^}]*\}/g, '').trim(),
+                                testament: isNT ? 'NT' : 'OT'
+                            });
+                        }
+                    });
+                });
+            });
+
+            // Randomize if testament is BOTH (unless specific book mentioned in keywords)
+            const hasSpecificBook = keywordsArray.some(keyword =>
+                bibleData.some(book => book.name.toLowerCase().includes(keyword))
+            );
+
+            if (testament === 'BOTH' && !hasSpecificBook) {
+                // Fisher-Yates shuffle algorithm
+                for (let i = results.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [results[i], results[j]] = [results[j], results[i]];
+                }
+            }
+
+            return results.slice(0, count);
+        }
+
+        function generateThemeText(keywords, verses) {
+            const keywordStr = keywords.split(',').map(k => k.trim()).join(', ');
+            const title = `${keywordStr.charAt(0).toUpperCase() + keywordStr.slice(1)} in Scripture`;
+
+            const intro = `This theme explores ${verses.length} powerful verses about ${keywordStr} from God's Word. These scriptures reveal deep truths and practical wisdom for our lives today.`;
+
+            const insights = `Through these verses, we discover:
+
+• **God's Truth**: The Bible consistently teaches us about ${keywordStr} across both testaments
+• **Practical Wisdom**: These verses offer guidance we can apply in our daily walk
+• **Spiritual Growth**: Understanding ${keywordStr} helps us grow closer to God
+• **Life Application**: Each verse contains timeless principles for modern living`;
+
+            const application = `**How to Apply This Theme:**
+
+1. **Daily Meditation**: Spend time each day reflecting on one of these verses
+2. **Memorization**: Choose 2-3 verses to commit to memory this week
+3. **Prayer**: Ask God to help you embody ${keywordStr} in your life
+4. **Sharing**: Discuss these verses with friends or family
+5. **Journaling**: Write about how these truths apply to your current situation`;
+
+            const prayer = `**Prayer:**
+
+Dear Heavenly Father, thank You for Your Word and the wisdom it contains about ${keywordStr}. Help me to understand these truths deeply and live them out daily. Transform my heart and mind through these scriptures. Guide me by Your Holy Spirit to walk in Your ways. In Jesus' name, Amen.`;
+
+            const conclusion = `May these ${verses.length} verses on ${keywordStr} inspire and encourage you. Remember, God's Word is living and active, and these truths are as relevant today as when they were first written. Let them guide your steps and illuminate your path.`;
+
+            return {
+                title,
+                intro,
+                insights,
+                application,
+                prayer,
+                conclusion
+            };
+        }
+
+        async function generateTheme() {
+            let keywords = document.getElementById('keywords').value.trim();
+            const count = parseInt(document.getElementById('count').value);
+            const testament = document.getElementById('testament').value;
+
+            if (!keywords) {
+                alert('Please enter at least one keyword');
+                return;
+            }
+
+            if (!bibleData) {
+                alert('Bible data still loading, please wait a moment...');
+                return;
+            }
+
+            // Hide previous correction notice
+            document.getElementById('correctionNotice').style.display = 'none';
+
+            // Spell check and correct keywords
+            const spellCheckResult = correctSpelling(keywords);
+            if (spellCheckResult.corrections.length > 0) {
+                // Show correction notice
+                document.getElementById('correctionText').textContent = spellCheckResult.corrections.join(', ');
+                document.getElementById('correctionNotice').style.display = 'block';
+
+                // Update input field with corrected keywords
+                document.getElementById('keywords').value = spellCheckResult.corrected;
+                keywords = spellCheckResult.corrected;
+
+                console.log('✨ Spell corrections applied:', spellCheckResult.corrections);
+            }
+
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+
+            setTimeout(() => {
+                // Search verses
+                currentVerses = searchBible(keywords, count, testament);
+
+                if (currentVerses.length === 0) {
+                    alert('No verses found. Try different keywords.');
+                    document.getElementById('loading').style.display = 'none';
+                    return;
+                }
+
+                // Generate theme
+                currentTheme = generateThemeText(keywords, currentVerses);
+
+                // Display results
+                displayResults(currentVerses, currentTheme);
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('results').style.display = 'block';
+
+                // Scroll to results
+                document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+            }, 500);
+        }
+
+        function displayResults(verses, theme) {
+            // Display verses
+            document.getElementById('verseCount').textContent = verses.length;
+            const versesHtml = verses.map((v, i) => `
+                <div class="verse-item">
+                    <div class="verse-ref">${i + 1}. ${v.reference}</div>
+                    <div class="verse-text">"${v.text}"</div>
+                </div>
+            `).join('');
+            document.getElementById('versesList').innerHTML = versesHtml;
+
+            // Display theme
+            const themeHtml = `
+                <h3 style="color: #4caf50; font-size: 2rem; margin-bottom: 20px;">${theme.title}</h3>
+
+                <h4>Introduction</h4>
+                <p>${theme.intro}</p>
+
+                <h4>Key Insights</h4>
+                <div style="white-space: pre-line;">${theme.insights}</div>
+
+                <h4>Practical Application</h4>
+                <div style="white-space: pre-line;">${theme.application}</div>
+
+                <h4>Prayer</h4>
+                <div style="white-space: pre-line;">${theme.prayer}</div>
+
+                <h4>Conclusion</h4>
+                <p>${theme.conclusion}</p>
+            `;
+            document.getElementById('themeContent').innerHTML = themeHtml;
+        }
+
+        async function saveTheme() {
+            const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+            if (!token) {
+                alert('Please login first to save themes');
+                window.location.href = '/';
+                return;
+            }
+
+            if (!currentTheme || !currentVerses.length) {
+                alert('Please generate a theme first');
+                return;
+            }
+
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.textContent = '💾 Saving...';
+            saveBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/themes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        name: currentTheme.title,
+                        description: currentTheme.intro + '\n\n' + currentTheme.conclusion,
+                        is_public: true
+                    })
+                });
+
+                const data = await response.json();
+                if (data.id || data.theme) {
+                    alert('✅ Theme saved successfully!');
+                    saveBtn.textContent = '✅ Saved!';
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to save'));
+                    saveBtn.textContent = '💾 Save Theme';
+                    saveBtn.disabled = false;
+                }
+            } catch (error) {
+                console.error('Save error:', error);
+                alert('Failed to save. Please try again.');
+                saveBtn.textContent = '💾 Save Theme';
+                saveBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
