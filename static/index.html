@@ -2198,7 +2198,9 @@
                 try {
                     console.log('[MultiplayerManager] Connecting to WebSocket...');
                     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                    const wsUrl = `${protocol}//${window.location.host}/ws?player_id=${this.playerId}&username=${encodeURIComponent(this.playerName)}`;
+                    // Use port 4000 for localhost, otherwise use same host (production will handle routing)
+                    const wsHost = window.location.hostname === 'localhost' ? 'localhost:4000' : window.location.host;
+                    const wsUrl = `${protocol}//${wsHost}/ws?player_id=${this.playerId}&username=${encodeURIComponent(this.playerName)}`;
                     this.ws = new WebSocket(wsUrl);
                     this.setupEventHandlers();
                 } catch (error) {
