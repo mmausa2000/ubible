@@ -2222,6 +2222,17 @@
                                 // Reconnection confirmation with game state
                                 case 'reconnected': {
                                     console.log('[Quiz] Reconnected to game:', payload);
+
+                                    // Restore player's score from server if available
+                                    if (payload.player_scores && MultiplayerState.playerId) {
+                                        const myScore = payload.player_scores[MultiplayerState.playerId];
+                                        if (myScore !== undefined) {
+                                            QuizState.score = myScore;
+                                            console.log('[Quiz] Restored score from server:', myScore);
+                                            updateScoreDisplay();
+                                        }
+                                    }
+
                                     if (payload.game_started && payload.current_question !== undefined) {
                                         console.log('[Quiz] Syncing to question', payload.current_question);
                                         // Server will send question_sync next
