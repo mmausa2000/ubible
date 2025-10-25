@@ -2,6 +2,7 @@
 package middleware
 
 import (
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -257,4 +258,112 @@ func FiberAuthRateLimitMiddleware() fiber.Handler {
 		}
 		return c.Next()
 	}
+}
+
+// RateLimitConfig for HTTPRateLimit wrapper
+type RateLimitConfig struct {
+	Requests  int
+	Burst     int
+	Window    time.Duration
+	KeyFunc   func(*http.Request) string
+	BlockCode int
+}
+
+// HTTPRateLimit is a configurable rate limiter wrapper
+func HTTPRateLimit(config RateLimitConfig) func(http.Handler) http.Handler {
+	// Create a custom rate limiter with the specified config
+	// Use Requests as max tokens, and convert Window to seconds
+	windowSeconds := int(config.Window.Seconds())
+	if windowSeconds <= 0 {
+		windowSeconds = 60 // default to 1 minute
+	}
+	limiter := NewRateLimiter(config.Requests, windowSeconds)
+
+	keyFunc := config.KeyFunc
+	if keyFunc == nil {
+		keyFunc = func(r *http.Request) string {
+			return getClientIPFromStd(r)
+		}
+	}
+
+	blockCode := config.BlockCode
+	if blockCode == 0 {
+		blockCode = http.StatusTooManyRequests
+	}
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if rateLimitDisabled() {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			key := keyFunc(r)
+			if !limiter.Allow(key) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(blockCode)
+				_, _ = w.Write([]byte(`{"success": false, "error": "Rate limit exceeded. Please try again later."}`))
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// IPKeyFunc returns the client IP as the rate limit key
+func IPKeyFunc(r *http.Request) string {
+	return getClientIPFromStd(r)
+}
+
+// HTTPCORSMiddleware adds CORS headers for specified origins
+func HTTPCORSMiddleware(allowedOrigins []string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			origin := r.Header.Get("Origin")
+
+			// Check if origin is allowed
+			allowed := false
+			for _, allowedOrigin := range allowedOrigins {
+				if allowedOrigin == "*" || allowedOrigin == origin {
+					allowed = true
+					break
+				}
+			}
+
+			if allowed {
+				if origin != "" {
+					w.Header().Set("Access-Control-Allow-Origin", origin)
+				} else if len(allowedOrigins) > 0 {
+					w.Header().Set("Access-Control-Allow-Origin", allowedOrigins[0])
+				}
+				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
+				w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+				w.Header().Set("Access-Control-Max-Age", "86400")
+			}
+
+			// Handle preflight requests
+			if r.Method == http.MethodOptions {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// HTTPRecoverMiddleware recovers from panics and returns a 500 error
+func HTTPRecoverMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				log.Printf("PANIC: %v\n", err)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write([]byte(`{"success": false, "error": "Internal server error"}`))
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
 }

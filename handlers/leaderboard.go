@@ -1,22 +1,33 @@
-// handlers/leaderboard.go
+// handlers/leaderboard.go (migrated to net/http)
 package handlers
 
 import (
+	"encoding/json"
+	"net/http"
+	"strconv"
+	"strings"
+
 	"ubible/database"
 	"ubible/models"
-
-	"github.com/gofiber/fiber/v2"
 )
 
-// GetLeaderboard returns the global leaderboard
-func GetLeaderboard(c *fiber.Ctx) error {
-	category := c.Query("category", "level")
-	limit := c.QueryInt("limit", 100)
-	offset := c.QueryInt("offset", 0)
+// writeJSON is a small helper for this file.
+func writeJSON(w http.ResponseWriter, status int, payload any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(payload)
+}
 
-	if limit > 100 {
-		limit = 100
+// GetLeaderboardHTTP returns the global leaderboard
+// GET /api/leaderboard?category=level&limit=100&offset=0
+func GetLeaderboardHTTP(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	category := q.Get("category")
+	if category == "" {
+		category = "level"
 	}
+	limit := clampInt(parseIntDefault(q.Get("limit"), 100), 1, 100)
+	offset := maxInt(parseIntDefault(q.Get("offset"), 0), 0)
 
 	db := database.GetDB()
 	var users []models.User
@@ -34,7 +45,7 @@ func GetLeaderboard(c *fiber.Ctx) error {
 	case "accuracy":
 		orderBy = "perfect_games DESC, wins DESC"
 	default:
-		orderBy = "xp DESC, wins DESC, total_games ASC" // Default to XP ranking
+		orderBy = "xp DESC, wins DESC, total_games ASC"
 	}
 
 	if err := db.Where("is_guest = ?", false).
@@ -42,9 +53,10 @@ func GetLeaderboard(c *fiber.Ctx) error {
 		Limit(limit).
 		Offset(offset).
 		Find(&users).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{
+		writeJSON(w, http.StatusInternalServerError, map[string]any{
 			"error": "Failed to fetch leaderboard",
 		})
+		return
 	}
 
 	// Remove sensitive data
@@ -56,7 +68,7 @@ func GetLeaderboard(c *fiber.Ctx) error {
 	var total int64
 	db.Model(&models.User{}).Where("is_guest = ?", false).Count(&total)
 
-	return c.JSON(fiber.Map{
+	writeJSON(w, http.StatusOK, map[string]any{
 		"success":  true,
 		"users":    users,
 		"category": category,
@@ -66,26 +78,24 @@ func GetLeaderboard(c *fiber.Ctx) error {
 	})
 }
 
-// GetSeasonLeaderboard returns the seasonal leaderboard
-func GetSeasonLeaderboard(c *fiber.Ctx) error {
-	limit := c.QueryInt("limit", 100)
-	offset := c.QueryInt("offset", 0)
-
-	if limit > 100 {
-		limit = 100
-	}
+// GetSeasonLeaderboardHTTP returns the seasonal leaderboard
+// GET /api/leaderboard/season?limit=100&offset=0
+func GetSeasonLeaderboardHTTP(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	limit := clampInt(parseIntDefault(q.Get("limit"), 100), 1, 100)
+	offset := maxInt(parseIntDefault(q.Get("offset"), 0), 0)
 
 	db := database.GetDB()
-	
+
 	type LeaderboardEntry struct {
-		UserID       uint    `json:"user_id"`
-		Username     string  `json:"username"`
-		Avatar       string  `json:"avatar"`
-		Level        int     `json:"level"`
-		TotalGames   int     `json:"total_games"`
-		Wins         int     `json:"wins"`
-		WinRate      float64 `json:"win_rate"`
-		CurrentStreak int    `json:"current_streak"`
+		UserID        uint    `json:"user_id"`
+		Username      string  `json:"username"`
+		Avatar        string  `json:"avatar"`
+		Level         int     `json:"level"`
+		TotalGames    int     `json:"total_games"`
+		Wins          int     `json:"wins"`
+		WinRate       float64 `json:"win_rate"`
+		CurrentStreak int     `json:"current_streak"`
 	}
 
 	var entries []LeaderboardEntry
@@ -109,7 +119,7 @@ func GetSeasonLeaderboard(c *fiber.Ctx) error {
 	var total int64
 	db.Model(&models.User{}).Where("is_guest = ?", false).Count(&total)
 
-	return c.JSON(fiber.Map{
+	writeJSON(w, http.StatusOK, map[string]any{
 		"success": true,
 		"entries": entries,
 		"total":   total,
@@ -118,18 +128,27 @@ func GetSeasonLeaderboard(c *fiber.Ctx) error {
 	})
 }
 
-// GetUserRank returns a user's rank in the leaderboard
-func GetUserRank(c *fiber.Ctx) error {
-	userID := c.Params("id")
-	category := c.Query("category", "level")
+// GetUserRankHTTP returns a user's rank in the leaderboard
+// GET /api/leaderboard/user/{id}?category=level
+func GetUserRankHTTP(w http.ResponseWriter, r *http.Request) {
+	// naive param extraction: trim prefix
+	path := strings.TrimPrefix(r.URL.Path, "/api/leaderboard/user/")
+	userID := path
+	if userID == "" || userID == "/api/leaderboard/user" {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "missing user id"})
+		return
+	}
+	category := r.URL.Query().Get("category")
+	if category == "" {
+		category = "level"
+	}
 
 	db := database.GetDB()
 	var user models.User
 
 	if err := db.Where("id = ? OR username = ?", userID, userID).First(&user).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{
-			"error": "User not found",
-		})
+		writeJSON(w, http.StatusNotFound, map[string]any{"error": "User not found"})
+		return
 	}
 
 	var rank int64
@@ -156,7 +175,7 @@ func GetUserRank(c *fiber.Ctx) error {
 		db.Raw(query, user.XP, user.XP, user.Wins, user.XP, user.Wins, user.TotalGames).Scan(&rank)
 	}
 
-	return c.JSON(fiber.Map{
+	writeJSON(w, http.StatusOK, map[string]any{
 		"success":  true,
 		"user_id":  user.ID,
 		"username": user.Username,
@@ -165,23 +184,29 @@ func GetUserRank(c *fiber.Ctx) error {
 	})
 }
 
-// GetLeaderboardAroundUser returns leaderboard entries around a specific user
-func GetLeaderboardAroundUser(c *fiber.Ctx) error {
-	userID := c.Params("id")
-	category := c.Query("category", "level")
-	context := c.QueryInt("context", 5) // Number of users above and below
-
-	if context > 20 {
-		context = 20
+// GetLeaderboardAroundUserHTTP returns entries around a specific user
+// GET /api/leaderboard/around/{id}?category=level&context=5
+func GetLeaderboardAroundUserHTTP(w http.ResponseWriter, r *http.Request) {
+	// naive param extraction
+	path := strings.TrimPrefix(r.URL.Path, "/api/leaderboard/around/")
+	userID := path
+	if userID == "" || userID == "/api/leaderboard/around" {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "missing user id"})
+		return
 	}
+	q := r.URL.Query()
+	category := q.Get("category")
+	if category == "" {
+		category = "level"
+	}
+	contextN := clampInt(parseIntDefault(q.Get("context"), 5), 1, 20)
 
 	db := database.GetDB()
 	var user models.User
 
 	if err := db.Where("id = ? OR username = ?", userID, userID).First(&user).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{
-			"error": "User not found",
-		})
+		writeJSON(w, http.StatusNotFound, map[string]any{"error": "User not found"})
+		return
 	}
 
 	var users []models.User
@@ -202,7 +227,6 @@ func GetLeaderboardAroundUser(c *fiber.Ctx) error {
 		orderBy = "xp DESC, wins DESC, total_games ASC"
 	}
 
-	// Get users around the target user
 	db.Raw(`
 		WITH ranked_users AS (
 			SELECT *, ROW_NUMBER() OVER (ORDER BY `+orderBy+`) as rank
@@ -215,19 +239,44 @@ func GetLeaderboardAroundUser(c *fiber.Ctx) error {
 		SELECT * FROM ranked_users
 		WHERE rank BETWEEN (SELECT rank FROM target_rank) - ? AND (SELECT rank FROM target_rank) + ?
 		ORDER BY rank
-	`, user.ID, context, context).Scan(&users)
+	`, user.ID, contextN, contextN).Scan(&users)
 
-	// Remove sensitive data
 	for i := range users {
 		users[i].Password = ""
 		users[i].Email = nil
 	}
 
-	return c.JSON(fiber.Map{
-		"success":    true,
-		"users":      users,
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success":     true,
+		"users":       users,
 		"target_user": user.ID,
-		"category":   category,
-		"context":    context,
+		"category":    category,
+		"context":     contextN,
 	})
+}
+
+// helpers
+func parseIntDefault(s string, def int) int {
+	if s == "" {
+		return def
+	}
+	if v, err := strconv.Atoi(s); err == nil {
+		return v
+	}
+	return def
+}
+func clampInt(v, min, max int) int {
+	if v < min {
+		return min
+	}
+	if v > max {
+		return max
+	}
+	return v
+}
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
