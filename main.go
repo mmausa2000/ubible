@@ -177,14 +177,11 @@ func main() {
 		globalRL,
 		middleware.HTTPCORSMiddleware(allowed),
 	))
-	// TODO: Uncomment after migrating theme_generator.go
-	/*
 	route("/api/themes/generate", chain(
 		mh(http.MethodPost, handlers.GenerateTheme),
 		globalRL,
 		middleware.HTTPCORSMiddleware(allowed),
 	))
-	*/
 	// TODO: /api/themes/:id (requires param parsing in handler)
 
 	// Verses (migrated to net/http)
