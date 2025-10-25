@@ -1582,14 +1582,20 @@
                 <div id="multiplayerJoinRoom" style="display: none; text-align: center; padding: 20px 0;">
                     <h3 style="color: white; margin-bottom: 10px;">🔑 Join Private Room</h3>
                     <p style="color: rgba(255, 255, 255, 0.7); margin-bottom: 20px; font-size: 0.9rem;">Enter the 6-character room code</p>
-                    <input type="text"
-                           id="roomCodeInputIntegrated"
-                           class="room-code-input"
-                           placeholder="ABC123"
-                           maxlength="6"
-                           style="width: 100%; margin-bottom: 20px;"
-                           oninput="this.value=this.value.toUpperCase()"
-                           onkeypress="if(event.key==='Enter') joinRoomIntegrated()">
+                    <div style="position: relative; margin-bottom: 20px;">
+                        <input type="text"
+                               id="roomCodeInputIntegrated"
+                               class="room-code-input"
+                               placeholder="ABC123"
+                               maxlength="6"
+                               style="width: 100%; padding-right: 50px;"
+                               oninput="this.value=this.value.toUpperCase()"
+                               onkeypress="if(event.key==='Enter') joinRoomIntegrated()">
+                        <button onclick="pasteRoomCode()"
+                                style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: rgba(76, 175, 80, 0.2); border: 1px solid rgba(76, 175, 80, 0.4); color: #4caf50; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; transition: all 0.3s;"
+                                onmouseover="this.style.background='rgba(76, 175, 80, 0.3)'"
+                                onmouseout="this.style.background='rgba(76, 175, 80, 0.2)'">📋</button>
+                    </div>
                     <div style="display: flex; gap: 10px;">
                         <button class="btn btn-secondary" style="flex: 1;" onclick="showMultiplayerView('main')">Back</button>
                         <button class="btn btn-primary" style="flex: 1;" onclick="joinRoomIntegrated()">Join Room</button>
@@ -4326,6 +4332,30 @@ An interactive Bible verse learning application with multiplayer support.
                 console.error('Failed to copy:', err);
                 showError('Failed to copy room code');
             });
+        }
+
+        // Paste room code into join room input
+        async function pasteRoomCode() {
+            try {
+                const text = await navigator.clipboard.readText();
+                const roomCode = text.toUpperCase().trim();
+                const input = document.getElementById('roomCodeInputIntegrated');
+
+                if (input) {
+                    input.value = roomCode;
+                    input.focus();
+
+                    // Show feedback
+                    if (roomCode.length === 6) {
+                        showSuccess('Room code pasted!');
+                    } else {
+                        showError('Invalid room code format (should be 6 characters)');
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to paste:', err);
+                showError('Failed to paste. Please allow clipboard access or paste manually (Ctrl+V)');
+            }
         }
 
         // Toggle ready in integrated waiting room
