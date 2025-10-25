@@ -1,21 +1,33 @@
 package admin
 
 import (
+	"net/http"
+	"strconv"
 	"ubible/database"
 	"ubible/models"
+	"ubible/utils"
 
-	"github.com/gofiber/fiber/v2"
 	"golang.org/x/crypto/bcrypt"
 )
 
 // GetUsers returns all users with pagination
-func GetUsers(c *fiber.Ctx) error {
+func GetUsers(w http.ResponseWriter, r *http.Request) {
 	db := database.GetDB()
 
 	// Get pagination parameters
-	page := c.QueryInt("page", 1)
-	limit := c.QueryInt("limit", 20)
-	search := c.Query("search", "")
+	pageStr := utils.Query(r, "page", "1")
+	limitStr := utils.Query(r, "limit", "20")
+	search := utils.Query(r, "search", "")
+
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 {
+		limit = 20
+	}
 
 	offset := (page - 1) * limit
 
@@ -34,12 +46,11 @@ func GetUsers(c *fiber.Ctx) error {
 
 	// Get paginated users
 	if err := query.Offset(offset).Limit(limit).Find(&users).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"error": "Failed to fetch users",
-		})
+		utils.JSONError(w, http.StatusInternalServerError, "Failed to fetch users")
+		return
 	}
 
-	return c.JSON(fiber.Map{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
 		"users": users,
 		"total": total,
 		"page":  page,
@@ -48,30 +59,28 @@ func GetUsers(c *fiber.Ctx) error {
 }
 
 // GetUser returns a single user by ID
-func GetUser(c *fiber.Ctx) error {
+func GetUser(w http.ResponseWriter, r *http.Request) {
 	db := database.GetDB()
-	id := c.Params("id")
+	id := r.PathValue("id")
 
 	var user models.User
 	if err := db.First(&user, id).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{
-			"error": "User not found",
-		})
+		utils.JSONError(w, http.StatusNotFound, "User not found")
+		return
 	}
 
-	return c.JSON(user)
+	utils.JSON(w, http.StatusOK, user)
 }
 
 // UpdateUser updates a user's information
-func UpdateUser(c *fiber.Ctx) error {
+func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	db := database.GetDB()
-	id := c.Params("id")
+	id := r.PathValue("id")
 
 	var user models.User
 	if err := db.First(&user, id).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{
-			"error": "User not found",
-		})
+		utils.JSONError(w, http.StatusNotFound, "User not found")
+		return
 	}
 
 	// Parse update data
@@ -85,10 +94,9 @@ func UpdateUser(c *fiber.Ctx) error {
 		IsBanned    bool   `json:"is_banned"`
 	}
 
-	if err := c.BodyParser(&updateData); err != nil {
-		return c.Status(400).JSON(fiber.Map{
-			"error": "Invalid request body",
-		})
+	if err := utils.ParseJSON(r, &updateData); err != nil {
+		utils.JSONError(w, http.StatusBadRequest, "Invalid request body")
+		return
 	}
 
 	// Update fields
@@ -112,123 +120,111 @@ func UpdateUser(c *fiber.Ctx) error {
 	user.IsBanned = updateData.IsBanned
 
 	if err := db.Save(&user).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"error": "Failed to update user",
-		})
+		utils.JSONError(w, http.StatusInternalServerError, "Failed to update user")
+		return
 	}
 
-	return c.JSON(user)
+	utils.JSON(w, http.StatusOK, user)
 }
 
 // DeleteUser deletes a user
-func DeleteUser(c *fiber.Ctx) error {
+func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	db := database.GetDB()
-	id := c.Params("id")
+	id := r.PathValue("id")
 
 	// Check if user exists
 	var user models.User
 	if err := db.First(&user, id).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{
-			"error": "User not found",
-		})
+		utils.JSONError(w, http.StatusNotFound, "User not found")
+		return
 	}
 
 	// Prevent deleting admin users
 	if user.IsAdmin {
-		return c.Status(403).JSON(fiber.Map{
-			"error": "Cannot delete admin users",
-		})
+		utils.JSONError(w, http.StatusForbidden, "Cannot delete admin users")
+		return
 	}
 
 	if err := db.Delete(&user).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"error": "Failed to delete user",
-		})
+		utils.JSONError(w, http.StatusInternalServerError, "Failed to delete user")
+		return
 	}
 
-	return c.JSON(fiber.Map{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
 		"message": "User deleted successfully",
 	})
 }
 
 // BanUser bans or unbans a user
-func BanUser(c *fiber.Ctx) error {
+func BanUser(w http.ResponseWriter, r *http.Request) {
 	db := database.GetDB()
-	id := c.Params("id")
+	id := r.PathValue("id")
 
 	var user models.User
 	if err := db.First(&user, id).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{
-			"error": "User not found",
-		})
+		utils.JSONError(w, http.StatusNotFound, "User not found")
+		return
 	}
 
 	var banData struct {
 		IsBanned bool `json:"is_banned"`
 	}
 
-	if err := c.BodyParser(&banData); err != nil {
-		return c.Status(400).JSON(fiber.Map{
-			"error": "Invalid request body",
-		})
+	if err := utils.ParseJSON(r, &banData); err != nil {
+		utils.JSONError(w, http.StatusBadRequest, "Invalid request body")
+		return
 	}
 
 	user.IsBanned = banData.IsBanned
 
 	if err := db.Save(&user).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"error": "Failed to update ban status",
-		})
+		utils.JSONError(w, http.StatusInternalServerError, "Failed to update ban status")
+		return
 	}
 
-	return c.JSON(user)
+	utils.JSON(w, http.StatusOK, user)
 }
 
 // ResetUserPassword resets a user's password (admin function)
-func ResetUserPassword(c *fiber.Ctx) error {
+func ResetUserPassword(w http.ResponseWriter, r *http.Request) {
 	db := database.GetDB()
-	id := c.Params("id")
+	id := r.PathValue("id")
 
 	var user models.User
 	if err := db.First(&user, id).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{
-			"error": "User not found",
-		})
+		utils.JSONError(w, http.StatusNotFound, "User not found")
+		return
 	}
 
 	var passwordData struct {
 		NewPassword string `json:"new_password"`
 	}
 
-	if err := c.BodyParser(&passwordData); err != nil {
-		return c.Status(400).JSON(fiber.Map{
-			"error": "Invalid request body",
-		})
+	if err := utils.ParseJSON(r, &passwordData); err != nil {
+		utils.JSONError(w, http.StatusBadRequest, "Invalid request body")
+		return
 	}
 
 	if len(passwordData.NewPassword) < 6 {
-		return c.Status(400).JSON(fiber.Map{
-			"error": "Password must be at least 6 characters",
-		})
+		utils.JSONError(w, http.StatusBadRequest, "Password must be at least 6 characters")
+		return
 	}
 
 	// Hash new password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(passwordData.NewPassword), bcrypt.DefaultCost)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"error": "Failed to hash password",
-		})
+		utils.JSONError(w, http.StatusInternalServerError, "Failed to hash password")
+		return
 	}
 
 	user.Password = string(hashedPassword)
 
 	if err := db.Save(&user).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"error": "Failed to reset password",
-		})
+		utils.JSONError(w, http.StatusInternalServerError, "Failed to reset password")
+		return
 	}
 
-	return c.JSON(fiber.Map{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
 		"message": "Password reset successfully",
 	})
 }

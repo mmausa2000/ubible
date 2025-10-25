@@ -1529,8 +1529,8 @@
                 </div>
 
                 <!-- Searching View -->
-                <div id="multiplayerSearching" style="display: none; text-align: center; padding: 20px 10px;">
-                    <div class="spinner" style="margin: 0 auto 15px; width: 60px; height: 60px;"></div>
+                <div id="multiplayerSearching" style="display: none; text-align: center; padding: 15px 10px;">
+                    <div style="margin: 0 auto 12px; width: 50px; height: 50px; border: 3px solid rgba(255, 255, 255, 0.1); border-top-color: #ff6b6b; border-right-color: #ff6b6b; border-radius: 50%; animation: spin 1s linear infinite;"></div>
                     <h3 style="color: white; margin-bottom: 8px; font-size: 1.1rem;">🔍 Finding Opponent...</h3>
                     <p style="color: rgba(255, 255, 255, 0.7); margin-bottom: 15px; font-size: 0.9rem;">Searching for a player with similar settings</p>
                     <button class="btn btn-secondary" onclick="showMultiplayerView('main'); multiplayerManager.cancelSearch();">Cancel Search</button>
@@ -1603,32 +1603,32 @@
                 </div>
 
                 <!-- Waiting Room View -->
-                <div id="multiplayerWaitingRoom" style="display: none; padding: 10px 0; flex-direction: column; height: 100%;">
-                    <h3 id="waitingRoomTitle" style="color: white; margin-bottom: 15px; text-align: center;">🏠 Private Room</h3>
+                <div id="multiplayerWaitingRoom" style="display: none; padding: 5px 0; flex-direction: column; height: 100%;">
+                    <h3 id="waitingRoomTitle" style="color: white; margin-bottom: 8px; text-align: center; font-size: 1.05rem;">🏠 Private Room</h3>
 
-                    <div class="room-code-display" style="text-align: center; margin-bottom: 20px; padding: 15px; background: rgba(76, 175, 80, 0.1); border-radius: 10px; border: 1px solid rgba(76, 175, 80, 0.3);">
-                        <p style="color: rgba(255, 255, 255, 0.7); font-size: 0.85rem; margin-bottom: 8px;">Room Code:</p>
-                        <div id="displayRoomCodeIntegrated" style="font-size: 2rem; font-weight: bold; color: #4caf50; letter-spacing: 4px; margin-bottom: 10px;">------</div>
-                        <button class="btn btn-secondary" style="font-size: 0.85rem; padding: 8px 16px;" onclick="copyRoomCodeIntegrated()">📋 Copy Code</button>
+                    <div class="room-code-display" style="text-align: center; margin-bottom: 10px; padding: 10px; background: rgba(76, 175, 80, 0.1); border-radius: 8px; border: 1px solid rgba(76, 175, 80, 0.3);">
+                        <p style="color: rgba(255, 255, 255, 0.7); font-size: 0.75rem; margin-bottom: 5px;">Room Code:</p>
+                        <div id="displayRoomCodeIntegrated" style="font-size: 1.5rem; font-weight: bold; color: #4caf50; letter-spacing: 3px; margin-bottom: 6px;">------</div>
+                        <button class="btn btn-secondary" style="font-size: 0.75rem; padding: 6px 12px;" onclick="copyRoomCodeIntegrated()">📋 Copy Code</button>
                     </div>
 
-                    <div id="spectatingNotice" style="display: none; padding: 12px; background: rgba(255, 193, 7, 0.1); border-radius: 10px; border: 1px solid rgba(255, 193, 7, 0.3); margin-bottom: 15px;">
-                        <div style="display: flex; align-items: center; gap: 10px; color: #ffc107;">
-                            <span style="font-size: 1.2rem;">👁️</span>
-                            <span style="font-weight: 600; font-size: 0.9rem;">Spectating Mode</span>
+                    <div id="spectatingNotice" style="display: none; padding: 8px; background: rgba(255, 193, 7, 0.1); border-radius: 8px; border: 1px solid rgba(255, 193, 7, 0.3); margin-bottom: 10px;">
+                        <div style="display: flex; align-items: center; gap: 8px; color: #ffc107;">
+                            <span style="font-size: 1rem;">👁️</span>
+                            <span style="font-weight: 600; font-size: 0.85rem;">Spectating Mode</span>
                         </div>
-                        <p style="color: rgba(255, 255, 255, 0.7); font-size: 0.75rem; margin: 5px 0 0 0;">
+                        <p style="color: rgba(255, 255, 255, 0.7); font-size: 0.7rem; margin: 3px 0 0 0;">
                             You're watching this game, not playing
                         </p>
                     </div>
 
-                    <div id="playersContainerIntegrated" style="flex: 1; overflow-y: auto; margin-bottom: 15px; padding: 10px; background: rgba(255, 255, 255, 0.05); border-radius: 10px; min-height: 120px;">
+                    <div id="playersContainerIntegrated" style="flex: 1; overflow-y: auto; margin-bottom: 10px; padding: 8px; background: rgba(255, 255, 255, 0.05); border-radius: 8px; min-height: 100px; max-height: 150px;">
                         <!-- Players will be dynamically updated -->
                     </div>
 
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
-                        <button id="readyBtnIntegrated" class="btn btn-primary" onclick="toggleReadyIntegrated()">Ready</button>
-                        <button class="btn btn-secondary" onclick="leaveRoomIntegrated()">Leave Room</button>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <button id="readyBtnIntegrated" class="btn btn-primary" style="padding: 10px; font-size: 0.9rem;" onclick="toggleReadyIntegrated()">Ready</button>
+                        <button class="btn btn-secondary" style="padding: 10px; font-size: 0.9rem;" onclick="leaveRoomIntegrated()">Leave Room</button>
                     </div>
                 </div>
             </div>
