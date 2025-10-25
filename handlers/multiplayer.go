@@ -881,11 +881,12 @@ func handleSubmitAnswer(player *Player, payload interface{}) {
 	// Mark player as answered for current question
 	room.PlayersAnswered[player.ID] = true
 
-	// Update player score
+	// Update player score (add points earned this question)
 	if _, exists := room.PlayerScores[player.ID]; !exists {
 		room.PlayerScores[player.ID] = 0
 	}
 	room.PlayerScores[player.ID] += score
+	playerTotalScore := room.PlayerScores[player.ID] // Store total for broadcast
 
 	// Count playing players who have answered
 	playingCount := 0
@@ -906,12 +907,14 @@ func handleSubmitAnswer(player *Player, payload interface{}) {
 	room.mu.Unlock()
 
 	// Broadcast this player's answer to all players in room
+	// Send TOTAL score so other players can see individual scores
 	broadcastToRoom(room, "answer_submitted", map[string]interface{}{
 		"player_id":      player.ID,
 		"username":       player.Username,
 		"question_index": questionIndex,
 		"correct":        isCorrect,
-		"score":          score,
+		"score":          playerTotalScore,     // Player's total score
+		"points_earned":  score,                // Points earned this question
 		"all_answered":   allAnswered,
 	})
 
@@ -921,7 +924,7 @@ func handleSubmitAnswer(player *Player, payload interface{}) {
 		"username":      player.Username,
 		"questionIndex": questionIndex,
 		"correct":       isCorrect,
-		"score":         score,
+		"score":         playerTotalScore,     // Player's total score
 		"allAnswered":   allAnswered,
 	})
 

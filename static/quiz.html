@@ -1732,13 +1732,16 @@
             const timeTaken = currentSettings.time - QuizState.timeRemaining;
             const timeBonus = Math.max(0, QuizState.timeRemaining * 10);
 
+            // Calculate points earned for THIS question only
+            const pointsEarned = isCorrect ? (100 + timeBonus) : 0;
+
             // Record answer metadata for smart repetition
             QuizState.recordAnswer(QuizState.currentQuestionIndex, isCorrect, timeTaken, currentSettings.time);
 
             if (isCorrect) {
                 QuizState.correctAnswers++;
                 QuizState.currentStreak++;
-                QuizState.score += 100 + timeBonus;
+                QuizState.score += pointsEarned;
 
                 if (QuizState.currentStreak > QuizState.bestStreakValue) {
                     QuizState.bestStreakValue = QuizState.currentStreak;
@@ -1749,7 +1752,7 @@
 
             updateScoreDisplay();
             updateStreakDisplay();
-            
+
             const buttons = document.querySelectorAll('.option-btn');
             buttons.forEach(btn => {
                 btn.disabled = true;
@@ -1760,23 +1763,23 @@
                     btn.classList.add('incorrect');
                 }
             });
-            
+
             const gameData = localStorage.getItem('multiplayerGame');
             const isMultiplayer = gameData && JSON.parse(gameData).isMultiplayer;
-            
+
             if (isMultiplayer) {
                 if (MultiplayerState.ws && MultiplayerState.ws.readyState === WebSocket.OPEN) {
                     const game = JSON.parse(localStorage.getItem('multiplayerGame') || '{}');
                     const roomCode = MultiplayerState.roomCode || game.room_code || game.roomCode || null;
 
-                    // Send single submit_answer event - server handles all logic
+                    // Send single submit_answer event with points for THIS question only
                     MultiplayerState.ws.send(JSON.stringify({
                         type: 'submit_answer',
                         payload: {
                             room_code: roomCode,
                             question_index: QuizState.currentQuestionIndex,
                             is_correct: isCorrect,
-                            score: QuizState.score,
+                            score: pointsEarned,  // Send points for THIS question, not total
                             correct_answers: QuizState.correctAnswers
                         }
                     }));
