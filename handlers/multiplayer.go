@@ -925,11 +925,13 @@ func handleSubmitAnswer(player *Player, payload interface{}) {
 		"allAnswered":   allAnswered,
 	})
 
-	log.Printf("📝 Player %s answered Q%d (correct: %v, score: %d) - %d/%d answered",
-		player.ID, questionIndex, isCorrect, score, answeredCount, playingCount)
+	log.Printf("📝 Player %s answered Q%d (correct: %v, score: %d) - %d/%d answered, allAnswered=%v",
+		player.ID, questionIndex, isCorrect, score, answeredCount, playingCount, allAnswered)
 
 	// If all players have answered, prepare for next question
 	if allAnswered {
+		log.Printf("✅ All players answered Q%d, advancing to next question", questionIndex)
+
 		room.mu.Lock()
 		room.CurrentQuestion++
 
@@ -949,6 +951,7 @@ func handleSubmitAnswer(player *Player, payload interface{}) {
 			log.Printf("➡️  Room %s advancing to Q%d/%d", roomCode, nextQuestion+1, totalQuestions)
 
 			// Broadcast ready for next question
+			log.Printf("📢 Broadcasting next_question event: Q%d/%d to room %s", nextQuestion, totalQuestions, roomCode)
 			broadcastToRoom(room, "next_question", map[string]interface{}{
 				"question_index": nextQuestion,
 				"total":          totalQuestions,
