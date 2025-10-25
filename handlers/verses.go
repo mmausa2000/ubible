@@ -2,17 +2,19 @@
 package handlers
 
 import (
-	"ubible/database"
-	"ubible/models"
 	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
+	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
+	"ubible/database"
+	"ubible/models"
+	"ubible/utils"
 
-	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 )
 
@@ -162,24 +164,30 @@ func isCompletionQuestion(q models.Question) bool {
 	return false
 }
 
-func GetVerses(c *fiber.Ctx) error {
+func GetVerses(w http.ResponseWriter, r *http.Request) {
 	db := database.GetDB()
 	if db == nil {
 		log.Println("Database not initialized in GetVerses")
-		return c.Status(500).JSON(fiber.Map{"success": false, "error": "Database not available"})
+		utils.JSONError(w, http.StatusInternalServerError, "Database not available")
+		return
 	}
 
-	themeID := c.Query("theme_id", "")
-	limit := c.QueryInt("limit", 50)
-	offset := c.QueryInt("offset", 0)
+	themeID := utils.Query(r, "theme_id", "")
+	limitStr := utils.Query(r, "limit", "50")
+	offsetStr := utils.Query(r, "offset", "0")
 	// Control which direction to return (reference|completion|all). Default: reference.
-	questionType := strings.ToLower(strings.TrimSpace(c.Query("question_type", "reference")))
+	questionType := strings.ToLower(strings.TrimSpace(utils.Query(r, "question_type", "reference")))
 
-	if limit < 1 || limit > 200 {
-		return c.Status(400).JSON(fiber.Map{"success": false, "error": "Limit must be between 1 and 200"})
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 || limit > 200 {
+		utils.JSONError(w, http.StatusBadRequest, "Limit must be between 1 and 200")
+		return
 	}
-	if offset < 0 {
-		return c.Status(400).JSON(fiber.Map{"success": false, "error": "Offset must be non-negative"})
+
+	offset, err := strconv.Atoi(offsetStr)
+	if err != nil || offset < 0 {
+		utils.JSONError(w, http.StatusBadRequest, "Offset must be non-negative")
+		return
 	}
 
 	var questions []models.Question
@@ -189,7 +197,8 @@ func GetVerses(c *fiber.Ctx) error {
 	}
 	if err := query.Limit(limit).Offset(offset).Find(&questions).Error; err != nil {
 		log.Printf("Error fetching verses: %v", err)
-		return c.Status(500).JSON(fiber.Map{"success": false, "error": "Failed to fetch verses"})
+		utils.JSONError(w, http.StatusInternalServerError, "Failed to fetch verses")
+		return
 	}
 
 	verses := make([]VerseResponse, 0, len(questions))
@@ -241,31 +250,35 @@ func GetVerses(c *fiber.Ctx) error {
 		})
 	}
 
-	c.Set("Content-Type", "application/json; charset=utf-8")
-	c.Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
-	return c.JSON(fiber.Map{"success": true, "verses": verses, "count": len(verses)})
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"success": true, "verses": verses, "count": len(verses)})
 }
 
-func GetVerse(c *fiber.Ctx) error {
+func GetVerse(w http.ResponseWriter, r *http.Request) {
 	db := database.GetDB()
 	if db == nil {
 		log.Println("Database not initialized in GetVerse")
-		return c.Status(500).JSON(fiber.Map{"success": false, "error": "Database not available"})
+		utils.JSONError(w, http.StatusInternalServerError, "Database not available")
+		return
 	}
 
-	id := c.Params("id")
+	id := r.PathValue("id")
 	if id == "" {
-		return c.Status(400).JSON(fiber.Map{"success": false, "error": "Verse ID is required"})
+		utils.JSONError(w, http.StatusBadRequest, "Verse ID is required")
+		return
 	}
 
 	var question models.Question
 	err := db.Preload("Theme").First(&question, id).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return c.Status(404).JSON(fiber.Map{"success": false, "error": fmt.Sprintf("Verse with ID %s not found", id)})
+			utils.JSONError(w, http.StatusNotFound, fmt.Sprintf("Verse with ID %s not found", id))
+			return
 		}
 		log.Printf("Error fetching verse %s: %v", id, err)
-		return c.Status(500).JSON(fiber.Map{"success": false, "error": "Failed to fetch verse"})
+		utils.JSONError(w, http.StatusInternalServerError, "Failed to fetch verse")
+		return
 	}
 
 	var wrongAnswers []string
@@ -293,25 +306,28 @@ func GetVerse(c *fiber.Ctx) error {
 		Difficulty:    question.Difficulty,
 	}
 
-	c.Set("Content-Type", "application/json; charset=utf-8")
-	c.Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
-	return c.JSON(fiber.Map{"success": true, "verse": verse, "count": 1})
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"success": true, "verse": verse, "count": 1})
 }
 
-func GetQuizQuestions(c *fiber.Ctx) error {
+func GetQuizQuestions(w http.ResponseWriter, r *http.Request) {
 	db := database.GetDB()
 	if db == nil {
-		return c.Status(500).JSON(fiber.Map{"success": false, "error": "Database not available"})
+		utils.JSONError(w, http.StatusInternalServerError, "Database not available")
+		return
 	}
 
-	themeID := c.Query("theme_id")
-	count := c.QueryInt("count", 20)
-	difficulty := c.Query("difficulty", "")
+	themeID := utils.Query(r, "theme_id", "")
+	countStr := utils.Query(r, "count", "20")
+	difficulty := utils.Query(r, "difficulty", "")
 	// Same question_type filter for quiz
-	questionType := strings.ToLower(strings.TrimSpace(c.Query("question_type", "reference")))
+	questionType := strings.ToLower(strings.TrimSpace(utils.Query(r, "question_type", "reference")))
 
-	if count < 1 || count > 100 {
-		return c.Status(400).JSON(fiber.Map{"success": false, "error": "Count must be between 1 and 100"})
+	count, err := strconv.Atoi(countStr)
+	if err != nil || count < 1 || count > 100 {
+		utils.JSONError(w, http.StatusBadRequest, "Count must be between 1 and 100")
+		return
 	}
 
 	query := db.Model(&models.Question{}).Preload("Theme")
@@ -326,7 +342,8 @@ func GetQuizQuestions(c *fiber.Ctx) error {
 	var questions []models.Question
 	if err := query.Find(&questions).Error; err != nil {
 		log.Printf("Error fetching quiz questions: %v", err)
-		return c.Status(500).JSON(fiber.Map{"success": false, "error": "Failed to fetch questions"})
+		utils.JSONError(w, http.StatusInternalServerError, "Failed to fetch questions")
+		return
 	}
 
 	verses := make([]VerseResponse, 0, len(questions))
@@ -377,8 +394,9 @@ func GetQuizQuestions(c *fiber.Ctx) error {
 	}
 
 	if len(verses) == 0 {
-		c.Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
-		return c.Status(404).JSON(fiber.Map{"success": false, "error": "No questions available for the selected criteria"})
+		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+		utils.JSONError(w, http.StatusNotFound, "No questions available for the selected criteria")
+		return
 	}
 
 	// Smart repetition: if user requests more questions than available, repeat to fill gap
@@ -420,7 +438,7 @@ func GetQuizQuestions(c *fiber.Ctx) error {
 		finalVerses = finalVerses[:count]
 	}
 
-	c.Set("Content-Type", "application/json; charset=utf-8")
-	c.Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
-	return c.JSON(fiber.Map{"success": true, "verses": finalVerses, "count": len(finalVerses)})
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+	utils.JSON(w, http.StatusOK, map[string]interface{}{"success": true, "verses": finalVerses, "count": len(finalVerses)})
 }

@@ -166,16 +166,9 @@ func main() {
 		middleware.HTTPCORSMiddleware(allowed),
 	))
 
-	// Themes (only endpoints known to be net/http safe; comment others until migrated)
-	// TODO: Uncomment after migrating themes.go, theme_generator.go
-	/*
+	// Themes (migrated to net/http)
 	route("/api/themes", chain(
 		mh(http.MethodGet, handlers.GetThemes),
-		globalRL,
-		middleware.HTTPCORSMiddleware(allowed),
-	))
-	route("/api/themes/generate", chain(
-		mh(http.MethodPost, handlers.GenerateTheme),
 		globalRL,
 		middleware.HTTPCORSMiddleware(allowed),
 	))
@@ -184,29 +177,30 @@ func main() {
 		globalRL,
 		middleware.HTTPCORSMiddleware(allowed),
 	))
+	// TODO: Uncomment after migrating theme_generator.go
+	/*
+	route("/api/themes/generate", chain(
+		mh(http.MethodPost, handlers.GenerateTheme),
+		globalRL,
+		middleware.HTTPCORSMiddleware(allowed),
+	))
 	*/
 	// TODO: /api/themes/:id (requires param parsing in handler)
 
-	// Verses
-	// TODO: Uncomment after migrating verses.go
-	/*
+	// Verses (migrated to net/http)
 	route("/api/verses", chain(
 		mh(http.MethodGet, handlers.GetVerses),
 		globalRL,
 		middleware.HTTPCORSMiddleware(allowed),
 	))
-	*/
 	// TODO: /api/verses/:id
 
-	// Quiz
-	// TODO: Uncomment after migrating appropriate handler
-	/*
+	// Quiz (migrated to net/http)
 	route("/api/questions/quiz", chain(
 		mh(http.MethodGet, handlers.GetQuizQuestions),
 		globalRL,
 		middleware.HTTPCORSMiddleware(allowed),
 	))
-	*/
 
 	// Practice
 	route("/api/practice/cards", chain(

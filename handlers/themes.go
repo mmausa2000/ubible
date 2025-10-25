@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net/http"
 	"strings"
 	"time"
 	"ubible/database"
+	"ubible/middleware"
 	"ubible/models"
+	"ubible/utils"
 
-	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 )
 
@@ -20,28 +22,24 @@ func init() {
 }
 
 // GetThemes returns all active themes with question counts (Public endpoint)
-func GetThemes(c *fiber.Ctx) error {
+func GetThemes(w http.ResponseWriter, r *http.Request) {
 	db := database.GetDB()
 	if db == nil {
 		log.Println("Database not initialized in GetThemes")
-		return c.Status(500).JSON(fiber.Map{
-			"success": false,
-			"error":   "Database not available",
-		})
+		utils.JSONError(w, http.StatusInternalServerError, "Database not available")
+		return
 	}
 
 	var themes []models.Theme
 	// Only return active themes for public endpoint, and preload creator info
 	if err := db.Preload("Creator").Where("is_active = ?", true).Find(&themes).Error; err != nil {
 		log.Printf("Error fetching themes: %v", err)
-		return c.Status(500).JSON(fiber.Map{
-			"success": false,
-			"error":   "Failed to fetch themes",
-		})
+		utils.JSONError(w, http.StatusInternalServerError, "Failed to fetch themes")
+		return
 	}
 
 	// Build response with question counts and creator info
-	themesData := make([]fiber.Map, len(themes))
+	themesData := make([]map[string]interface{}, len(themes))
 	for i, theme := range themes {
 		var questionCount int64
 		db.Model(&models.Question{}).Where("theme_id = ?", theme.ID).Count(&questionCount)
@@ -51,7 +49,7 @@ func GetThemes(c *fiber.Ctx) error {
 			createdBy = theme.Creator.Username
 		}
 
-		themesData[i] = fiber.Map{
+		themesData[i] = map[string]interface{}{
 			"id":             theme.ID,
 			"name":           theme.Name,
 			"description":    theme.Description,
@@ -62,7 +60,7 @@ func GetThemes(c *fiber.Ctx) error {
 		}
 	}
 
-	return c.JSON(fiber.Map{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
 		"success": true,
 		"themes":  themesData,
 		"total":   len(themesData),
@@ -70,29 +68,25 @@ func GetThemes(c *fiber.Ctx) error {
 }
 
 // GetTheme returns a single theme with its questions
-func GetTheme(c *fiber.Ctx) error {
-	themeID := c.Params("id")
+func GetTheme(w http.ResponseWriter, r *http.Request) {
+	themeID := r.PathValue("id")
 	db := database.GetDB()
 
 	var theme models.Theme
 	if err := db.First(&theme, themeID).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{
-			"success": false,
-			"error":   "Theme not found",
-		})
+		utils.JSONError(w, http.StatusNotFound, "Theme not found")
+		return
 	}
 
 	// Get questions for this theme
 	var questions []models.Question
 	if err := db.Where("theme_id = ?", themeID).Find(&questions).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"success": false,
-			"error":   "Failed to fetch questions",
-		})
+		utils.JSONError(w, http.StatusInternalServerError, "Failed to fetch questions")
+		return
 	}
 
 	// Transform questions to include parsed options
-	questionsData := make([]fiber.Map, len(questions))
+	questionsData := make([]map[string]interface{}, len(questions))
 	for i, q := range questions {
 		var wrongAnswers []string
 		if q.WrongAnswers != "" {
@@ -101,7 +95,7 @@ func GetTheme(c *fiber.Ctx) error {
 
 		options := append([]string{q.CorrectAnswer}, wrongAnswers...)
 
-		questionsData[i] = fiber.Map{
+		questionsData[i] = map[string]interface{}{
 			"id":             q.ID,
 			"text":           q.Text,
 			"correct_answer": q.CorrectAnswer,
@@ -111,7 +105,7 @@ func GetTheme(c *fiber.Ctx) error {
 		}
 	}
 
-	return c.JSON(fiber.Map{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
 		"success":   true,
 		"theme":     theme,
 		"questions": questionsData,
@@ -120,7 +114,7 @@ func GetTheme(c *fiber.Ctx) error {
 }
 
 // CreateTheme creates a new theme with verses (requires auth)
-func CreateTheme(c *fiber.Ctx) error {
+func CreateTheme(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Name        string `json:"name"`
 		Description string `json:"description"`
@@ -132,25 +126,19 @@ func CreateTheme(c *fiber.Ctx) error {
 		} `json:"verses"`
 	}
 
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(400).JSON(fiber.Map{
-			"success": false,
-			"error":   "Invalid request body",
-		})
+	if err := utils.ParseJSON(r, &req); err != nil {
+		utils.JSONError(w, http.StatusBadRequest, "Invalid request body")
+		return
 	}
 
 	if req.Name == "" {
-		return c.Status(400).JSON(fiber.Map{
-			"success": false,
-			"error":   "Theme name is required",
-		})
+		utils.JSONError(w, http.StatusBadRequest, "Theme name is required")
+		return
 	}
 
 	if len(req.Verses) < 5 {
-		return c.Status(400).JSON(fiber.Map{
-			"success": false,
-			"error":   "At least 5 verses are required",
-		})
+		utils.JSONError(w, http.StatusBadRequest, "At least 5 verses are required")
+		return
 	}
 
 	db := database.GetDB()
@@ -158,10 +146,15 @@ func CreateTheme(c *fiber.Ctx) error {
 	// Check for duplicate
 	var existing models.Theme
 	if err := db.Where("name = ?", req.Name).First(&existing).Error; err == nil {
-		return c.Status(409).JSON(fiber.Map{
-			"success": false,
-			"error":   "Theme with this name already exists",
-		})
+		utils.JSONError(w, http.StatusConflict, "Theme with this name already exists")
+		return
+	}
+
+	// Get user ID from context
+	userID, err := middleware.GetUserID(r)
+	var creatorID *uint
+	if err == nil {
+		creatorID = &userID
 	}
 
 	theme := models.Theme{
@@ -171,13 +164,12 @@ func CreateTheme(c *fiber.Ctx) error {
 		Color:       req.Color,
 		IsActive:    true,
 		IsDefault:   false,
+		CreatedBy:   creatorID,
 	}
 
 	if err := db.Create(&theme).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"success": false,
-			"error":   "Failed to create theme",
-		})
+		utils.JSONError(w, http.StatusInternalServerError, "Failed to create theme")
+		return
 	}
 
 	// Create questions for each verse
@@ -218,7 +210,7 @@ func CreateTheme(c *fiber.Ctx) error {
 
 	log.Printf("Theme %d created with %d/%d verses", theme.ID, successCount, len(req.Verses))
 
-	return c.JSON(fiber.Map{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
 		"success":        true,
 		"message":        "Theme created successfully",
 		"theme":          theme,
@@ -227,8 +219,8 @@ func CreateTheme(c *fiber.Ctx) error {
 }
 
 // UpdateTheme updates an existing theme (requires auth)
-func UpdateTheme(c *fiber.Ctx) error {
-	themeID := c.Params("id")
+func UpdateTheme(w http.ResponseWriter, r *http.Request) {
+	themeID := r.PathValue("id")
 
 	var req struct {
 		Name        string `json:"name"`
@@ -238,21 +230,17 @@ func UpdateTheme(c *fiber.Ctx) error {
 		IsActive    *bool  `json:"is_active"`
 	}
 
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(400).JSON(fiber.Map{
-			"success": false,
-			"error":   "Invalid request body",
-		})
+	if err := utils.ParseJSON(r, &req); err != nil {
+		utils.JSONError(w, http.StatusBadRequest, "Invalid request body")
+		return
 	}
 
 	db := database.GetDB()
 
 	var theme models.Theme
 	if err := db.First(&theme, themeID).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{
-			"success": false,
-			"error":   "Theme not found",
-		})
+		utils.JSONError(w, http.StatusNotFound, "Theme not found")
+		return
 	}
 
 	// Update fields if provided
@@ -273,13 +261,11 @@ func UpdateTheme(c *fiber.Ctx) error {
 	}
 
 	if err := db.Save(&theme).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"success": false,
-			"error":   "Failed to update theme",
-		})
+		utils.JSONError(w, http.StatusInternalServerError, "Failed to update theme")
+		return
 	}
 
-	return c.JSON(fiber.Map{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
 		"success": true,
 		"message": "Theme updated successfully",
 		"theme":   theme,
@@ -287,24 +273,20 @@ func UpdateTheme(c *fiber.Ctx) error {
 }
 
 // DeleteTheme deletes a theme (requires auth)
-func DeleteTheme(c *fiber.Ctx) error {
-	themeID := c.Params("id")
+func DeleteTheme(w http.ResponseWriter, r *http.Request) {
+	themeID := r.PathValue("id")
 	db := database.GetDB()
 
 	var theme models.Theme
 	if err := db.First(&theme, themeID).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{
-			"success": false,
-			"error":   "Theme not found",
-		})
+		utils.JSONError(w, http.StatusNotFound, "Theme not found")
+		return
 	}
 
 	// Don't allow deleting default themes
 	if theme.IsDefault {
-		return c.Status(403).JSON(fiber.Map{
-			"success": false,
-			"error":   "Cannot delete default themes",
-		})
+		utils.JSONError(w, http.StatusForbidden, "Cannot delete default themes")
+		return
 	}
 
 	// Delete associated questions first
@@ -312,20 +294,18 @@ func DeleteTheme(c *fiber.Ctx) error {
 
 	// Delete theme
 	if err := db.Delete(&theme).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"success": false,
-			"error":   "Failed to delete theme",
-		})
+		utils.JSONError(w, http.StatusInternalServerError, "Failed to delete theme")
+		return
 	}
 
-	return c.JSON(fiber.Map{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
 		"success": true,
 		"message": "Theme deleted successfully",
 	})
 }
 
 // CreatePublicTheme creates a new public theme (no auth required)
-func CreatePublicTheme(c *fiber.Ctx) error {
+func CreatePublicTheme(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Name   string `json:"name"`
 		Verses []struct {
@@ -334,42 +314,32 @@ func CreatePublicTheme(c *fiber.Ctx) error {
 		} `json:"verses"`
 	}
 
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(400).JSON(fiber.Map{
-			"success": false,
-			"error":   "Invalid request body",
-		})
+	if err := utils.ParseJSON(r, &req); err != nil {
+		utils.JSONError(w, http.StatusBadRequest, "Invalid request body")
+		return
 	}
 
 	if req.Name == "" {
-		return c.Status(400).JSON(fiber.Map{
-			"success": false,
-			"error":   "Theme name is required",
-		})
+		utils.JSONError(w, http.StatusBadRequest, "Theme name is required")
+		return
 	}
 
 	if len(req.Verses) < 5 {
-		return c.Status(400).JSON(fiber.Map{
-			"success": false,
-			"error":   "At least 5 verses are required",
-		})
+		utils.JSONError(w, http.StatusBadRequest, "At least 5 verses are required")
+		return
 	}
 
 	if len(req.Verses) > 500 {
-		return c.Status(400).JSON(fiber.Map{
-			"success": false,
-			"error":   "Maximum 500 verses allowed",
-		})
+		utils.JSONError(w, http.StatusBadRequest, "Maximum 500 verses allowed")
+		return
 	}
 
 	db := database.GetDB()
 
 	var existing models.Theme
 	if err := db.Where("name = ?", req.Name).First(&existing).Error; err == nil {
-		return c.Status(409).JSON(fiber.Map{
-			"success": false,
-			"error":   "Theme with this name already exists",
-		})
+		utils.JSONError(w, http.StatusConflict, "Theme with this name already exists")
+		return
 	}
 
 	theme := models.Theme{
@@ -384,10 +354,8 @@ func CreatePublicTheme(c *fiber.Ctx) error {
 	}
 
 	if err := db.Create(&theme).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"success": false,
-			"error":   "Failed to create theme",
-		})
+		utils.JSONError(w, http.StatusInternalServerError, "Failed to create theme")
+		return
 	}
 
 	// Generate questions from verses - alternating between two question types
@@ -452,7 +420,7 @@ func CreatePublicTheme(c *fiber.Ctx) error {
 		}
 	}
 
-	return c.JSON(fiber.Map{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
 		"success":        true,
 		"message":        "Theme created successfully",
 		"theme":          theme,
@@ -462,7 +430,7 @@ func CreatePublicTheme(c *fiber.Ctx) error {
 }
 
 // CreateThemeFromVerses creates a new theme from bulk verses (admin endpoint - protected)
-func CreateThemeFromVerses(c *fiber.Ctx) error {
+func CreateThemeFromVerses(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Name        string `json:"name"`
 		Description string `json:"description"`
@@ -474,33 +442,25 @@ func CreateThemeFromVerses(c *fiber.Ctx) error {
 		} `json:"verses"`
 	}
 
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(400).JSON(fiber.Map{
-			"success": false,
-			"error":   "Invalid request body",
-		})
+	if err := utils.ParseJSON(r, &req); err != nil {
+		utils.JSONError(w, http.StatusBadRequest, "Invalid request body")
+		return
 	}
 
 	// Validation
 	if req.Name == "" {
-		return c.Status(400).JSON(fiber.Map{
-			"success": false,
-			"error":   "Theme name is required",
-		})
+		utils.JSONError(w, http.StatusBadRequest, "Theme name is required")
+		return
 	}
 
 	if len(req.Verses) < 5 {
-		return c.Status(400).JSON(fiber.Map{
-			"success": false,
-			"error":   "At least 5 verses are required",
-		})
+		utils.JSONError(w, http.StatusBadRequest, "At least 5 verses are required")
+		return
 	}
 
 	if len(req.Verses) > 500 {
-		return c.Status(400).JSON(fiber.Map{
-			"success": false,
-			"error":   "Maximum 500 verses allowed",
-		})
+		utils.JSONError(w, http.StatusBadRequest, "Maximum 500 verses allowed")
+		return
 	}
 
 	db := database.GetDB()
@@ -508,10 +468,8 @@ func CreateThemeFromVerses(c *fiber.Ctx) error {
 	// Check for duplicate theme name
 	var existing models.Theme
 	if err := db.Where("name = ?", req.Name).First(&existing).Error; err == nil {
-		return c.Status(409).JSON(fiber.Map{
-			"success": false,
-			"error":   "Theme with this name already exists",
-		})
+		utils.JSONError(w, http.StatusConflict, "Theme with this name already exists")
+		return
 	}
 
 	// Create theme - marked as not file-backed since it's user-created
@@ -527,10 +485,8 @@ func CreateThemeFromVerses(c *fiber.Ctx) error {
 
 	if err := db.Create(&theme).Error; err != nil {
 		log.Printf("Error creating theme: %v", err)
-		return c.Status(500).JSON(fiber.Map{
-			"success": false,
-			"error":   "Failed to create theme",
-		})
+		utils.JSONError(w, http.StatusInternalServerError, "Failed to create theme")
+		return
 	}
 
 	log.Printf("🎨 Created theme %d: '%s' for admin user", theme.ID, req.Name)
@@ -569,7 +525,7 @@ func CreateThemeFromVerses(c *fiber.Ctx) error {
 	log.Printf("✅ Theme %d finalized: %d/%d verses created successfully (%d failed)",
 		theme.ID, successCount, len(req.Verses), failureCount)
 
-	return c.Status(201).JSON(fiber.Map{
+	utils.JSON(w, http.StatusCreated, map[string]interface{}{
 		"success":        true,
 		"message":        "Theme created successfully",
 		"theme":          theme,
