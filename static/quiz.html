@@ -1325,12 +1325,19 @@
             ws: null,
             roomCode: null,
             totalQuestions: 20,
-            
+            reconnectAttempts: 0,
+            maxReconnectAttempts: 5,
+            reconnectDelay: 1000, // Start with 1 second
+            lastSeq: 0, // Track last received sequence number for ordering
+            pendingMessages: [], // Buffer for out-of-order messages
+            heartbeatInterval: null,
+            lastPongTime: Date.now(),
+
             reset() {
                 this.opponentAnswered = false;
                 this.currentPlayerAnswered = false;
             },
-            
+
             bothAnswered() {
                 return this.opponentAnswered && this.currentPlayerAnswered;
             },
@@ -1414,6 +1421,123 @@
                     currentPlayerCard.classList.remove('leading');
                     opponentPlayerCard.classList.remove('leading');
                 }
+            },
+
+            // Process message with sequence number ordering
+            processMessage(msg) {
+                // If message has no sequence number, process immediately (legacy support)
+                if (!msg.seq) {
+                    return msg;
+                }
+
+                // Check if message is in order
+                if (msg.seq <= this.lastSeq) {
+                    console.warn(`[Quiz] Dropping stale/duplicate message: seq=${msg.seq}, lastSeq=${this.lastSeq}, type=${msg.type}`);
+                    return null; // Discard stale/duplicate message
+                }
+
+                // If message is next in sequence, process it
+                if (msg.seq === this.lastSeq + 1) {
+                    this.lastSeq = msg.seq;
+                    console.log(`[Quiz] Processing message in order: seq=${msg.seq}, type=${msg.type}`);
+
+                    // Check if any pending messages can now be processed
+                    this.processPendingMessages();
+                    return msg;
+                }
+
+                // Message arrived out of order - buffer it
+                console.log(`[Quiz] Buffering out-of-order message: seq=${msg.seq}, expected=${this.lastSeq + 1}, type=${msg.type}`);
+                this.pendingMessages.push(msg);
+                this.pendingMessages.sort((a, b) => a.seq - b.seq);
+
+                // Limit pending buffer size to prevent memory issues
+                if (this.pendingMessages.length > 20) {
+                    console.warn('[Quiz] Pending message buffer full, processing oldest messages');
+                    this.processPendingMessages();
+                }
+
+                return null; // Don't process yet
+            },
+
+            processPendingMessages() {
+                let processed = 0;
+                while (this.pendingMessages.length > 0) {
+                    const nextMsg = this.pendingMessages[0];
+                    if (nextMsg.seq === this.lastSeq + 1) {
+                        this.pendingMessages.shift();
+                        this.lastSeq = nextMsg.seq;
+                        console.log(`[Quiz] Processing buffered message: seq=${nextMsg.seq}, type=${nextMsg.type}`);
+
+                        // Re-dispatch the message for processing
+                        this.handleOrderedMessage(nextMsg);
+                        processed++;
+                    } else {
+                        break; // Wait for missing message
+                    }
+                }
+                if (processed > 0) {
+                    console.log(`[Quiz] Processed ${processed} buffered messages`);
+                }
+            },
+
+            handleOrderedMessage(msg) {
+                // This will be called from the main message handler
+                // The message has already been validated for ordering
+                const event = { data: JSON.stringify(msg) };
+                // Trigger normal message processing
+                if (this.ws && this.ws.onmessage) {
+                    // Create a synthetic event that bypasses ordering check
+                    const syntheticEvent = { data: JSON.stringify({ ...msg, _skipOrdering: true }) };
+                    setTimeout(() => {
+                        if (this.ws && this.ws.onmessage) {
+                            this.ws.onmessage(syntheticEvent);
+                        }
+                    }, 0);
+                }
+            },
+
+            startHeartbeat() {
+                this.stopHeartbeat();
+                this.lastPongTime = Date.now();
+
+                this.heartbeatInterval = setInterval(() => {
+                    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                        // Send ping
+                        this.ws.send(JSON.stringify({ type: 'ping' }));
+
+                        // Check if we received pong recently
+                        const timeSinceLastPong = Date.now() - this.lastPongTime;
+                        if (timeSinceLastPong > 30000) { // 30 seconds without pong
+                            console.warn('[Quiz] No pong received for 30s, connection may be dead');
+                            this.ws.close();
+                        }
+                    }
+                }, 20000); // Send ping every 20 seconds
+            },
+
+            stopHeartbeat() {
+                if (this.heartbeatInterval) {
+                    clearInterval(this.heartbeatInterval);
+                    this.heartbeatInterval = null;
+                }
+            },
+
+            attemptReconnect() {
+                if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+                    console.error('[Quiz] Max reconnection attempts reached');
+                    alert('Connection lost. Please return to the main menu and try again.');
+                    return;
+                }
+
+                this.reconnectAttempts++;
+                const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1); // Exponential backoff
+
+                console.log(`[Quiz] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+
+                setTimeout(() => {
+                    location.reload();
+                }, delay);
             }
         };
 
@@ -2143,6 +2267,10 @@
                     MultiplayerState.ws.onopen = () => {
                         console.log('[Quiz] ✅ WebSocket connected');
                         MultiplayerState.reconnectAttempts = 0;
+                        MultiplayerState.reconnectDelay = 1000; // Reset delay
+
+                        // Start heartbeat
+                        MultiplayerState.startHeartbeat();
 
                         const gameId = game.gameId || game.game_id;
 
@@ -2172,28 +2300,39 @@
                     MultiplayerState.ws.onclose = (event) => {
                         console.log('[Quiz] WebSocket closed:', event.code, event.reason);
 
+                        // Stop heartbeat
+                        MultiplayerState.stopHeartbeat();
+
                         // Don't reconnect if game completed or intentional close
                         if (event.code === 1000) {
                             console.log('[Quiz] Normal closure, not reconnecting');
                             return;
                         }
 
-                        // Attempt reconnection (max 3 tries)
-                        if (MultiplayerState.reconnectAttempts < 3) {
-                            MultiplayerState.reconnectAttempts++;
-                            console.log(`[Quiz] Reconnecting... (attempt ${MultiplayerState.reconnectAttempts}/3)`);
-                            setTimeout(() => {
-                                location.reload(); // Reload page to reconnect
-                            }, 2000);
-                        } else {
-                            console.error('[Quiz] Max reconnection attempts reached');
-                            alert('Connection lost. Please return to the main menu and try again.');
-                        }
+                        // Attempt reconnection with exponential backoff
+                        MultiplayerState.attemptReconnect();
                     };
 
                     MultiplayerState.ws.onmessage = (event) => {
                         try {
                             const msg = JSON.parse(event.data);
+
+                            // Handle pong response for heartbeat
+                            if (msg.type === 'pong') {
+                                MultiplayerState.lastPongTime = Date.now();
+                                console.log('[Quiz] ❤️ Pong received');
+                                return;
+                            }
+
+                            // Process message with sequence number ordering (unless it's a buffered replay)
+                            if (!msg._skipOrdering) {
+                                const orderedMsg = MultiplayerState.processMessage(msg);
+                                if (!orderedMsg) {
+                                    // Message was buffered or dropped, don't process yet
+                                    return;
+                                }
+                                // Continue processing the ordered message
+                            }
 
                             const payload = typeof msg.payload === 'string'
                                 ? (msg.payload ? JSON.parse(msg.payload) : {})
@@ -2277,14 +2416,40 @@
 
                                     console.log('[Quiz] ✅ Reconnection successful');
 
-                                    // Restore player's score from server if available
-                                    if (payload.player_scores && MultiplayerState.playerId) {
-                                        const myScore = payload.player_scores[MultiplayerState.playerId];
-                                        if (myScore !== undefined) {
-                                            QuizState.score = myScore;
-                                            console.log('[Quiz] Restored score from server:', myScore);
-                                            updateScoreDisplay();
+                                    // Update sequence tracking to prevent replaying stale messages
+                                    if (payload.current_seq !== undefined) {
+                                        MultiplayerState.lastSeq = payload.current_seq;
+                                        console.log('[Quiz] Synced message sequence to:', payload.current_seq);
+                                    }
+
+                                    // Restore all player scores
+                                    if (payload.player_scores) {
+                                        console.log('[Quiz] Received player scores:', payload.player_scores);
+
+                                        // Restore own score
+                                        if (MultiplayerState.playerId) {
+                                            const myScore = payload.player_scores[MultiplayerState.playerId];
+                                            if (myScore !== undefined) {
+                                                QuizState.score = myScore;
+                                                console.log('[Quiz] Restored own score:', myScore);
+                                                updateScoreDisplay();
+                                            }
                                         }
+
+                                        // Restore opponent scores
+                                        for (const [playerId, score] of Object.entries(payload.player_scores)) {
+                                            if (playerId !== MultiplayerState.playerId) {
+                                                MultiplayerState.updateOpponentScore(score, 0);
+                                                console.log('[Quiz] Restored opponent score:', playerId, score);
+                                            }
+                                        }
+                                    }
+
+                                    // Sync who has answered current question
+                                    if (payload.players_answered) {
+                                        const hasMyPlayerAnswered = payload.players_answered[MultiplayerState.playerId];
+                                        MultiplayerState.currentPlayerAnswered = !!hasMyPlayerAnswered;
+                                        console.log('[Quiz] Current player answered status:', MultiplayerState.currentPlayerAnswered);
                                     }
 
                                     // Validate game state before syncing

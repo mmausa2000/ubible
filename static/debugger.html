@@ -657,6 +657,8 @@
                     <div class="controls">
                         <button class="btn btn-primary" onclick="connectWebSocket()">🔌 Connect</button>
                         <button class="btn btn-secondary" onclick="disconnectWebSocket()">🔌 Disconnect</button>
+                        <button class="btn btn-accent" onclick="showDiagnostics()">📊 Diagnostics</button>
+                        <button class="btn btn-secondary" onclick="wsDiagnostics.reset()">🔄 Reset Stats</button>
                     </div>
                 </div>
 
@@ -767,6 +769,196 @@
         let lastPingTime = null;
         let currentLatency = 0;
         let connectionHealth = 100;
+
+        // WebSocket Diagnostics (Troubleshooting Guide Implementation)
+        const wsDiagnostics = {
+            // Message tracking (#13 - Message Order)
+            lastSeq: 0,
+            receivedSeqs: [],
+            outOfOrderCount: 0,
+            duplicateCount: 0,
+            messageTimestamps: [],
+
+            // State tracking (#5 - Race Conditions)
+            stateChanges: [],
+            concurrentUpdates: 0,
+
+            // Connection tracking (#1 - Connection State)
+            sendAttempts: 0,
+            sendFailures: 0,
+            readyStateHistory: [],
+
+            // Broadcast tracking (#6 - Broadcast Logic)
+            expectedBroadcasts: [],
+            receivedBroadcasts: [],
+            missedBroadcasts: 0,
+
+            // Reconnection tracking (#7 - Reconnection)
+            disconnectTime: null,
+            reconnectTime: null,
+            reconnectDurations: [],
+
+            // Message parsing (#3 - Parsing Failures)
+            parseErrors: 0,
+            malformedMessages: [],
+
+            // Heartbeat tracking (#10 - Ping/Pong)
+            missedPongs: 0,
+            pongLatencies: [],
+            avgLatency: 0,
+
+            // Performance tracking
+            messageRate: 0,
+            messagesPerSecond: [],
+            lastMessageTime: Date.now(),
+
+            // Helper methods
+            trackMessage(msg) {
+                const now = Date.now();
+                this.messageTimestamps.push(now);
+
+                // Track sequence if present
+                if (msg.seq !== undefined) {
+                    this.receivedSeqs.push(msg.seq);
+
+                    // Check for duplicates
+                    if (this.receivedSeqs.filter(s => s === msg.seq).length > 1) {
+                        this.duplicateCount++;
+                        logMP('warning', `🔴 DUPLICATE MESSAGE: seq=${msg.seq}, type=${msg.type}`);
+                    }
+
+                    // Check for out-of-order
+                    if (msg.seq < this.lastSeq) {
+                        this.outOfOrderCount++;
+                        logMP('warning', `🔴 OUT-OF-ORDER: seq=${msg.seq} (expected > ${this.lastSeq}), type=${msg.type}`);
+                    }
+
+                    this.lastSeq = Math.max(this.lastSeq, msg.seq);
+                }
+
+                // Calculate message rate
+                const recentMessages = this.messageTimestamps.filter(t => now - t < 1000);
+                this.messageRate = recentMessages.length;
+
+                // Track timing
+                if (this.lastMessageTime) {
+                    const gap = now - this.lastMessageTime;
+                    if (gap > 5000) {
+                        logMP('warning', `🔴 MESSAGE GAP: ${gap}ms since last message`);
+                    }
+                }
+                this.lastMessageTime = now;
+            },
+
+            trackStateChange(field, oldValue, newValue) {
+                const change = {
+                    timestamp: Date.now(),
+                    field,
+                    oldValue,
+                    newValue,
+                    stack: new Error().stack
+                };
+                this.stateChanges.push(change);
+
+                // Detect concurrent updates (multiple changes within 100ms)
+                const recentChanges = this.stateChanges.filter(
+                    c => Date.now() - c.timestamp < 100
+                );
+                if (recentChanges.length > 3) {
+                    this.concurrentUpdates++;
+                    logMP('warning', `🔴 RACE CONDITION: ${recentChanges.length} state changes in 100ms`);
+                }
+
+                // Keep only recent changes (last 100)
+                if (this.stateChanges.length > 100) {
+                    this.stateChanges = this.stateChanges.slice(-100);
+                }
+            },
+
+            trackSendAttempt(success) {
+                this.sendAttempts++;
+                if (!success) {
+                    this.sendFailures++;
+                    const failureRate = (this.sendFailures / this.sendAttempts * 100).toFixed(1);
+                    logMP('error', `🔴 SEND FAILURE: Rate=${failureRate}% (${this.sendFailures}/${this.sendAttempts})`);
+                }
+            },
+
+            trackReadyState(state) {
+                this.readyStateHistory.push({
+                    timestamp: Date.now(),
+                    state,
+                    stateString: ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'][state]
+                });
+
+                // Keep only recent history (last 50)
+                if (this.readyStateHistory.length > 50) {
+                    this.readyStateHistory = this.readyStateHistory.slice(-50);
+                }
+            },
+
+            trackPong(latency) {
+                this.pongLatencies.push(latency);
+
+                // Keep only recent latencies (last 20)
+                if (this.pongLatencies.length > 20) {
+                    this.pongLatencies = this.pongLatencies.slice(-20);
+                }
+
+                // Calculate average
+                this.avgLatency = this.pongLatencies.reduce((a, b) => a + b, 0) / this.pongLatencies.length;
+            },
+
+            getReport() {
+                return {
+                    messageOrdering: {
+                        lastSeq: this.lastSeq,
+                        totalMessages: this.receivedSeqs.length,
+                        outOfOrder: this.outOfOrderCount,
+                        duplicates: this.duplicateCount,
+                        messageRate: this.messageRate
+                    },
+                    raceConditions: {
+                        totalStateChanges: this.stateChanges.length,
+                        concurrentUpdates: this.concurrentUpdates
+                    },
+                    connectionHealth: {
+                        sendAttempts: this.sendAttempts,
+                        sendFailures: this.sendFailures,
+                        failureRate: this.sendAttempts > 0 ?
+                            (this.sendFailures / this.sendAttempts * 100).toFixed(1) : 0
+                    },
+                    heartbeat: {
+                        missedPongs: this.missedPongs,
+                        avgLatency: this.avgLatency.toFixed(0),
+                        samples: this.pongLatencies.length
+                    },
+                    parsing: {
+                        errors: this.parseErrors,
+                        malformed: this.malformedMessages.length
+                    }
+                };
+            },
+
+            reset() {
+                this.lastSeq = 0;
+                this.receivedSeqs = [];
+                this.outOfOrderCount = 0;
+                this.duplicateCount = 0;
+                this.messageTimestamps = [];
+                this.stateChanges = [];
+                this.concurrentUpdates = 0;
+                this.sendAttempts = 0;
+                this.sendFailures = 0;
+                this.readyStateHistory = [];
+                this.parseErrors = 0;
+                this.malformedMessages = [];
+                this.missedPongs = 0;
+                this.pongLatencies = [];
+                this.messageRate = 0;
+                logMP('info', '🔄 Diagnostics reset');
+            }
+        };
 
         // Initialize
         window.addEventListener('DOMContentLoaded', () => {
@@ -960,40 +1152,83 @@
 
             ws.onopen = () => {
                 reconnectAttempts = 0;
-                logMP('success', '✅ WebSocket connected');
+                wsDiagnostics.trackReadyState(WebSocket.OPEN);
+
+                // Track reconnection duration
+                if (wsDiagnostics.disconnectTime) {
+                    const duration = Date.now() - wsDiagnostics.disconnectTime;
+                    wsDiagnostics.reconnectDurations.push(duration);
+                    logMP('success', `✅ WebSocket reconnected in ${duration}ms`);
+                    wsDiagnostics.disconnectTime = null;
+                } else {
+                    logMP('success', '✅ WebSocket connected');
+                }
+
                 updateWSStatus(true);
                 startHealthMonitoring();
             };
 
             ws.onmessage = (event) => {
+                const rawData = event.data;
+                logMP('info', `📨 RAW: ${rawData.substring(0, 100)}${rawData.length > 100 ? '...' : ''}`);
+
                 try {
-                    const data = JSON.parse(event.data);
+                    const data = JSON.parse(rawData);
+
+                    // Track message in diagnostics
+                    wsDiagnostics.trackMessage(data);
+
+                    // Log with sequence number if present
+                    if (data.seq !== undefined) {
+                        logMP('info', `📨 ${data.type} [seq=${data.seq}] [ts=${data.timestamp}]`);
+                    }
 
                     // Handle pong for latency measurement
                     if (data.type === 'pong') {
                         const latency = Date.now() - lastPingTime;
                         currentLatency = latency;
+                        wsDiagnostics.trackPong(latency);
                         updateLatency(latency);
                         updateConnectionHealth(latency);
+                        logMP('success', `❤️ Pong received: ${latency}ms (avg: ${wsDiagnostics.avgLatency.toFixed(0)}ms)`);
                         return;
                     }
 
                     handleWSMessage(data);
                 } catch (error) {
-                    logMP('error', `Error parsing message: ${error.message}`);
+                    wsDiagnostics.parseErrors++;
+                    wsDiagnostics.malformedMessages.push({
+                        timestamp: Date.now(),
+                        raw: rawData,
+                        error: error.message
+                    });
+                    logMP('error', `🔴 PARSE ERROR: ${error.message}`);
+                    logMP('error', `Raw data: ${rawData}`);
                 }
             };
 
             ws.onerror = (error) => {
-                logMP('error', '❌ WebSocket error occurred');
+                logMP('error', `❌ WebSocket error: ${error.type || 'Unknown'}`);
+                wsDiagnostics.trackReadyState(ws.readyState);
                 updateWSStatus(false);
             };
 
-            ws.onclose = () => {
-                logMP('info', '🔌 WebSocket disconnected');
+            ws.onclose = (event) => {
+                wsDiagnostics.disconnectTime = Date.now();
+                wsDiagnostics.trackReadyState(WebSocket.CLOSED);
+
+                logMP('info', `🔌 WebSocket disconnected: code=${event.code}, reason="${event.reason || 'No reason'}"`);
+                logMP('info', `   Clean: ${event.wasClean}, Code: ${event.code}`);
+
                 updateWSStatus(false);
                 stopHealthMonitoring();
-                attemptReconnect();
+
+                // Don't reconnect if intentional close (code 1000)
+                if (event.code !== 1000) {
+                    attemptReconnect();
+                } else {
+                    logMP('info', 'Normal closure, not reconnecting');
+                }
             };
         }
 
@@ -1006,16 +1241,6 @@
             } else {
                 logMP('error', `Failed to reconnect after ${maxReconnectAttempts} attempts`);
             }
-        }
-
-        function startHealthMonitoring() {
-            // Send ping every 5 seconds
-            pingInterval = setInterval(() => {
-                if (ws && ws.readyState === WebSocket.OPEN) {
-                    lastPingTime = Date.now();
-                    sendWSMessage('ping', {});
-                }
-            }, 5000);
         }
 
         function stopHealthMonitoring() {
@@ -1097,12 +1322,18 @@
 
             switch (data.type) {
                 case 'connected':
+                    const oldPlayerId = currentPlayerId;
                     currentPlayerId = data.payload.player_id;
+                    wsDiagnostics.trackStateChange('currentPlayerId', oldPlayerId, currentPlayerId);
                     logMP('success', `Connected as player: ${data.payload.player_id}`);
                     break;
                 case 'room_created':
+                    const oldRoomCode1 = currentRoomCode;
+                    const oldIsHost1 = isHost;
                     currentRoomCode = data.payload.room_code;
                     isHost = true;
+                    wsDiagnostics.trackStateChange('currentRoomCode', oldRoomCode1, currentRoomCode);
+                    wsDiagnostics.trackStateChange('isHost', oldIsHost1, isHost);
                     document.getElementById('roomCode').textContent = data.payload.room_code;
                     document.getElementById('playerRole').textContent = 'Host';
                     updatePlayerCount(data.payload.players?.length || 1);
@@ -1155,14 +1386,35 @@
         }
 
         function sendWSMessage(type, payload = {}) {
-            if (!ws || ws.readyState !== WebSocket.OPEN) {
-                logMP('error', 'WebSocket not connected');
+            // Check readyState before sending (#1 - Connection State Mismatch)
+            const readyStateNames = ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'];
+            const currentState = ws ? ws.readyState : -1;
+
+            if (!ws) {
+                logMP('error', '🔴 SEND FAILED: WebSocket is null');
+                wsDiagnostics.trackSendAttempt(false);
                 return;
             }
 
-            const message = { type, payload };
-            ws.send(JSON.stringify(message));
-            logMP('info', `📤 Sent ${type}`, payload);
+            if (ws.readyState !== WebSocket.OPEN) {
+                const stateName = readyStateNames[ws.readyState] || 'UNKNOWN';
+                logMP('error', `🔴 SEND FAILED: WebSocket not OPEN (current: ${stateName})`);
+                wsDiagnostics.trackSendAttempt(false);
+                return;
+            }
+
+            try {
+                const message = { type, payload };
+                const json = JSON.stringify(message);
+
+                ws.send(json);
+                wsDiagnostics.trackSendAttempt(true);
+
+                logMP('info', `📤 Sent ${type} (${json.length} bytes)`, payload);
+            } catch (error) {
+                logMP('error', `🔴 SEND EXCEPTION: ${error.message}`);
+                wsDiagnostics.trackSendAttempt(false);
+            }
         }
 
         function createRoom() {
@@ -1386,6 +1638,128 @@
             } else {
                 logMP('success', `Logs exported as ${format.toUpperCase()}`);
             }
+        }
+
+        // WebSocket Diagnostics Report Function
+        function showDiagnostics() {
+            const report = wsDiagnostics.getReport();
+
+            logMP('info', '═══════════════════════════════════════════');
+            logMP('info', '📊 WEBSOCKET DIAGNOSTICS REPORT');
+            logMP('info', '═══════════════════════════════════════════');
+
+            // Message Ordering (#13)
+            logMP('info', '');
+            logMP('info', '🔢 MESSAGE ORDERING:');
+            logMP('info', `   Last Seq: ${report.messageOrdering.lastSeq}`);
+            logMP('info', `   Total Messages: ${report.messageOrdering.totalMessages}`);
+            logMP('info', `   Out-of-Order: ${report.messageOrdering.outOfOrder} ${report.messageOrdering.outOfOrder > 0 ? '⚠️' : '✅'}`);
+            logMP('info', `   Duplicates: ${report.messageOrdering.duplicates} ${report.messageOrdering.duplicates > 0 ? '⚠️' : '✅'}`);
+            logMP('info', `   Message Rate: ${report.messageOrdering.messageRate}/sec`);
+
+            // Race Conditions (#5)
+            logMP('info', '');
+            logMP('info', '⚡ RACE CONDITIONS:');
+            logMP('info', `   Total State Changes: ${report.raceConditions.totalStateChanges}`);
+            logMP('info', `   Concurrent Updates: ${report.raceConditions.concurrentUpdates} ${report.raceConditions.concurrentUpdates > 0 ? '⚠️' : '✅'}`);
+
+            // Connection Health (#1)
+            logMP('info', '');
+            logMP('info', '🔌 CONNECTION HEALTH:');
+            logMP('info', `   Send Attempts: ${report.connectionHealth.sendAttempts}`);
+            logMP('info', `   Send Failures: ${report.connectionHealth.sendFailures}`);
+            logMP('info', `   Failure Rate: ${report.connectionHealth.failureRate}% ${parseFloat(report.connectionHealth.failureRate) > 5 ? '⚠️' : '✅'}`);
+
+            // Heartbeat (#10)
+            logMP('info', '');
+            logMP('info', '❤️ HEARTBEAT:');
+            logMP('info', `   Missed Pongs: ${report.heartbeat.missedPongs} ${report.heartbeat.missedPongs > 0 ? '⚠️' : '✅'}`);
+            logMP('info', `   Avg Latency: ${report.heartbeat.avgLatency}ms`);
+            logMP('info', `   Samples: ${report.heartbeat.samples}`);
+
+            // Parsing (#3)
+            logMP('info', '');
+            logMP('info', '📝 MESSAGE PARSING:');
+            logMP('info', `   Parse Errors: ${report.parsing.errors} ${report.parsing.errors > 0 ? '⚠️' : '✅'}`);
+            logMP('info', `   Malformed Messages: ${report.parsing.malformed}`);
+
+            // Ready State History
+            if (wsDiagnostics.readyStateHistory.length > 0) {
+                logMP('info', '');
+                logMP('info', '📡 CONNECTION STATE HISTORY (last 10):');
+                const recentStates = wsDiagnostics.readyStateHistory.slice(-10);
+                recentStates.forEach(s => {
+                    const time = new Date(s.timestamp).toLocaleTimeString();
+                    logMP('info', `   [${time}] ${s.stateString}`);
+                });
+            }
+
+            // Reconnection Stats
+            if (wsDiagnostics.reconnectDurations.length > 0) {
+                logMP('info', '');
+                logMP('info', '🔄 RECONNECTION STATS:');
+                const avgReconnect = wsDiagnostics.reconnectDurations.reduce((a, b) => a + b, 0) / wsDiagnostics.reconnectDurations.length;
+                logMP('info', `   Reconnects: ${wsDiagnostics.reconnectDurations.length}`);
+                logMP('info', `   Avg Duration: ${avgReconnect.toFixed(0)}ms`);
+                logMP('info', `   Min: ${Math.min(...wsDiagnostics.reconnectDurations)}ms`);
+                logMP('info', `   Max: ${Math.max(...wsDiagnostics.reconnectDurations)}ms`);
+            }
+
+            // Recent Malformed Messages
+            if (wsDiagnostics.malformedMessages.length > 0) {
+                logMP('warning', '');
+                logMP('warning', '⚠️ MALFORMED MESSAGES (last 5):');
+                wsDiagnostics.malformedMessages.slice(-5).forEach(m => {
+                    const time = new Date(m.timestamp).toLocaleTimeString();
+                    logMP('error', `   [${time}] ${m.error}`);
+                    logMP('error', `   Raw: ${m.raw.substring(0, 100)}...`);
+                });
+            }
+
+            // Health Summary
+            logMP('info', '');
+            logMP('info', '═══════════════════════════════════════════');
+            const issues = [];
+            if (report.messageOrdering.outOfOrder > 0) issues.push('out-of-order messages');
+            if (report.messageOrdering.duplicates > 0) issues.push('duplicate messages');
+            if (report.raceConditions.concurrentUpdates > 0) issues.push('race conditions');
+            if (parseFloat(report.connectionHealth.failureRate) > 5) issues.push('high send failure rate');
+            if (report.heartbeat.missedPongs > 0) issues.push('missed pongs');
+            if (report.parsing.errors > 0) issues.push('parse errors');
+
+            if (issues.length === 0) {
+                logMP('success', '✅ ALL CHECKS PASSED - No issues detected!');
+            } else {
+                logMP('warning', `⚠️ ISSUES DETECTED: ${issues.join(', ')}`);
+                logMP('warning', '   Check the troubleshooting guide for resolution steps');
+            }
+            logMP('info', '═══════════════════════════════════════════');
+
+            // Also log to console for easier copying
+            console.log('WebSocket Diagnostics Report:', report);
+        }
+
+        // Ping interval check for missed pongs
+        function startHealthMonitoring() {
+            // Send ping every 5 seconds
+            pingInterval = setInterval(() => {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    lastPingTime = Date.now();
+                    sendWSMessage('ping', {});
+
+                    // Check if last pong was received (timeout after 10s)
+                    setTimeout(() => {
+                        if (lastPingTime && Date.now() - lastPingTime > 10000) {
+                            wsDiagnostics.missedPongs++;
+                            logMP('warning', `🔴 MISSED PONG: No response for ping sent at ${new Date(lastPingTime).toLocaleTimeString()}`);
+
+                            if (wsDiagnostics.missedPongs >= 3) {
+                                logMP('error', '🔴 CRITICAL: 3+ missed pongs - connection may be dead');
+                            }
+                        }
+                    }, 10000);
+                }
+            }, 5000);
         }
     </script>
 </body>

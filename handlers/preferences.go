@@ -3,10 +3,11 @@ package handlers
 import (
 	"encoding/json"
 	"log"
+	"net/http"
 	"ubible/database"
+	"ubible/middleware"
 	"ubible/models"
-
-	"github.com/gofiber/fiber/v2"
+	"ubible/utils"
 )
 
 type PreferencesRequest struct {
@@ -16,126 +17,78 @@ type PreferencesRequest struct {
 }
 
 // SavePreferences saves user's quiz preferences
-func SavePreferences(c *fiber.Ctx) error {
+func SavePreferences(w http.ResponseWriter, r *http.Request) {
 	db := database.GetDB()
 
-	// Get user ID from JWT token (middleware sets "userId")
-	userIDRaw := c.Locals("userId")
-	if userIDRaw == nil {
-		return c.Status(401).JSON(fiber.Map{
-			"success": false,
-			"error":   "Unauthorized",
-		})
-	}
-
-	// Handle both float64 (from JWT claims) and uint
-	var userID uint
-	switch v := userIDRaw.(type) {
-	case float64:
-		userID = uint(v)
-	case uint:
-		userID = v
-	default:
-		return c.Status(401).JSON(fiber.Map{
-			"success": false,
-			"error":   "Invalid user ID type",
-		})
+	userID, err := middleware.GetUserID(r)
+	if err != nil {
+		utils.JSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
 	}
 
 	var req PreferencesRequest
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(400).JSON(fiber.Map{
-			"success": false,
-			"error":   "Invalid request body",
-		})
+	if err := utils.ParseJSON(r, &req); err != nil {
+		utils.JSONError(w, http.StatusBadRequest, "Invalid request body")
+		return
 	}
 
 	// Validate
 	if req.QuizTimeLimit < 10 || req.QuizTimeLimit > 300 {
-		return c.Status(400).JSON(fiber.Map{
-			"success": false,
-			"error":   "Time limit must be between 10 and 300 seconds",
-		})
+		utils.JSONError(w, http.StatusBadRequest, "Time limit must be between 10 and 300 seconds")
+		return
 	}
 
 	if req.QuizQuestionCount < 1 || req.QuizQuestionCount > 100 {
-		return c.Status(400).JSON(fiber.Map{
-			"success": false,
-			"error":   "Question count must be between 1 and 100",
-		})
+		utils.JSONError(w, http.StatusBadRequest, "Question count must be between 1 and 100")
+		return
 	}
 
 	if len(req.SelectedThemes) > 5 {
-		return c.Status(400).JSON(fiber.Map{
-			"success": false,
-			"error":   "Maximum 5 themes allowed",
-		})
+		utils.JSONError(w, http.StatusBadRequest, "Maximum 5 themes allowed")
+		return
 	}
 
 	// Convert selected themes to JSON
 	themesJSON, err := json.Marshal(req.SelectedThemes)
 	if err != nil {
 		log.Printf("Error marshaling themes: %v", err)
-		return c.Status(500).JSON(fiber.Map{
-			"success": false,
-			"error":   "Failed to save preferences",
-		})
+		utils.JSONError(w, http.StatusInternalServerError, "Failed to save preferences")
+		return
 	}
 
 	// Update user preferences
 	result := db.Model(&models.User{}).Where("id = ?", userID).Updates(map[string]interface{}{
-		"selected_themes":      string(themesJSON),
-		"quiz_time_limit":      req.QuizTimeLimit,
-		"quiz_question_count":  req.QuizQuestionCount,
+		"selected_themes":     string(themesJSON),
+		"quiz_time_limit":     req.QuizTimeLimit,
+		"quiz_question_count": req.QuizQuestionCount,
 	})
 
 	if result.Error != nil {
 		log.Printf("Error saving preferences: %v", result.Error)
-		return c.Status(500).JSON(fiber.Map{
-			"success": false,
-			"error":   "Failed to save preferences",
-		})
+		utils.JSONError(w, http.StatusInternalServerError, "Failed to save preferences")
+		return
 	}
 
-	return c.JSON(fiber.Map{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
 		"success": true,
 		"message": "Preferences saved successfully",
 	})
 }
 
 // GetPreferences retrieves user's quiz preferences
-func GetPreferences(c *fiber.Ctx) error {
+func GetPreferences(w http.ResponseWriter, r *http.Request) {
 	db := database.GetDB()
 
-	// Get user ID from JWT token (middleware sets "userId")
-	userIDRaw := c.Locals("userId")
-	if userIDRaw == nil {
-		return c.Status(401).JSON(fiber.Map{
-			"success": false,
-			"error":   "Unauthorized",
-		})
-	}
-
-	// Handle both float64 (from JWT claims) and uint
-	var userID uint
-	switch v := userIDRaw.(type) {
-	case float64:
-		userID = uint(v)
-	case uint:
-		userID = v
-	default:
-		return c.Status(401).JSON(fiber.Map{
-			"success": false,
-			"error":   "Invalid user ID type",
-		})
+	userID, err := middleware.GetUserID(r)
+	if err != nil {
+		utils.JSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
 	}
 
 	var user models.User
 	if err := db.First(&user, userID).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{
-			"success": false,
-			"error":   "User not found",
-		})
+		utils.JSONError(w, http.StatusNotFound, "User not found")
+		return
 	}
 
 	// Parse selected themes from JSON
@@ -147,10 +100,10 @@ func GetPreferences(c *fiber.Ctx) error {
 		}
 	}
 
-	return c.JSON(fiber.Map{
-		"success":              true,
-		"selected_themes":      selectedThemes,
-		"quiz_time_limit":      user.QuizTimeLimit,
-		"quiz_question_count":  user.QuizQuestionCount,
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
+		"success":             true,
+		"selected_themes":     selectedThemes,
+		"quiz_time_limit":     user.QuizTimeLimit,
+		"quiz_question_count": user.QuizQuestionCount,
 	})
 }

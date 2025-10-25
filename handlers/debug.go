@@ -2,26 +2,26 @@
 package handlers
 
 import (
+	"net/http"
 	"time"
-
-	"github.com/gofiber/fiber/v2"
+	"ubible/utils"
 )
 
 // DebugRoomInfo represents room information for debugging
 type DebugRoomInfo struct {
-	RoomCode      string   `json:"room_code"`
-	Host          string   `json:"host"`
-	PlayerCount   int      `json:"player_count"`
-	MaxPlayers    int      `json:"max_players"`
-	State         string   `json:"state"`
-	GameID        string   `json:"game_id"`
-	GameURL       string   `json:"game_url"`
-	PlayerIDs     []string `json:"player_ids"`
-	PlayerNames   []string `json:"player_names"`
+	RoomCode    string   `json:"room_code"`
+	Host        string   `json:"host"`
+	PlayerCount int      `json:"player_count"`
+	MaxPlayers  int      `json:"max_players"`
+	State       string   `json:"state"`
+	GameID      string   `json:"game_id"`
+	GameURL     string   `json:"game_url"`
+	PlayerIDs   []string `json:"player_ids"`
+	PlayerNames []string `json:"player_names"`
 }
 
 // GetActiveRooms returns a list of all active multiplayer rooms
-func GetActiveRooms(c *fiber.Ctx) error {
+func GetActiveRooms(w http.ResponseWriter, r *http.Request) {
 	mu.RLock()
 	defer mu.RUnlock()
 
@@ -54,7 +54,7 @@ func GetActiveRooms(c *fiber.Ctx) error {
 		roomList = append(roomList, info)
 	}
 
-	return c.JSON(fiber.Map{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
 		"success":     true,
 		"total_rooms": len(roomList),
 		"rooms":       roomList,
@@ -63,11 +63,11 @@ func GetActiveRooms(c *fiber.Ctx) error {
 }
 
 // GetGameSessions returns a list of all active game sessions
-func GetGameSessions(c *fiber.Ctx) error {
+func GetGameSessions(w http.ResponseWriter, r *http.Request) {
 	mu.RLock()
 	defer mu.RUnlock()
 
-	sessionList := make([]fiber.Map, 0, len(gameSessions))
+	sessionList := make([]map[string]interface{}, 0, len(gameSessions))
 
 	for gameID, session := range gameSessions {
 		session.mu.RLock()
@@ -77,7 +77,7 @@ func GetGameSessions(c *fiber.Ctx) error {
 			authorizedPlayers = append(authorizedPlayers, playerID)
 		}
 
-		info := fiber.Map{
+		info := map[string]interface{}{
 			"game_id":            gameID,
 			"room_code":          session.RoomCode,
 			"created_at":         session.CreatedAt,
@@ -91,7 +91,7 @@ func GetGameSessions(c *fiber.Ctx) error {
 		sessionList = append(sessionList, info)
 	}
 
-	return c.JSON(fiber.Map{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
 		"success":        true,
 		"total_sessions": len(sessionList),
 		"sessions":       sessionList,
@@ -100,14 +100,12 @@ func GetGameSessions(c *fiber.Ctx) error {
 }
 
 // GetRoomByCode returns detailed information about a specific room
-func GetRoomByCode(c *fiber.Ctx) error {
-	roomCode := c.Params("code")
+func GetRoomByCode(w http.ResponseWriter, r *http.Request) {
+	roomCode := r.PathValue("code")
 
 	if roomCode == "" {
-		return c.Status(400).JSON(fiber.Map{
-			"success": false,
-			"error":   "Room code is required",
-		})
+		utils.JSONError(w, http.StatusBadRequest, "Room code is required")
+		return
 	}
 
 	mu.RLock()
@@ -123,21 +121,22 @@ func GetRoomByCode(c *fiber.Ctx) error {
 		}
 		mu.RUnlock()
 
-		return c.Status(404).JSON(fiber.Map{
+		utils.JSON(w, http.StatusNotFound, map[string]interface{}{
 			"success":      false,
 			"error":        "Room not found",
 			"room_code":    roomCode,
 			"active_rooms": activeCodes,
 			"total_active": len(activeCodes),
 		})
+		return
 	}
 
 	room.mu.RLock()
 	defer room.mu.RUnlock()
 
-	players := make([]fiber.Map, 0, len(room.Players))
+	players := make([]map[string]interface{}, 0, len(room.Players))
 	for _, player := range room.Players {
-		players = append(players, fiber.Map{
+		players = append(players, map[string]interface{}{
 			"id":         player.ID,
 			"username":   player.Username,
 			"is_ready":   player.IsReady,
@@ -146,9 +145,9 @@ func GetRoomByCode(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.JSON(fiber.Map{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
 		"success": true,
-		"room": fiber.Map{
+		"room": map[string]interface{}{
 			"code":             room.Code,
 			"host":             room.Host,
 			"player_count":     len(room.Players),

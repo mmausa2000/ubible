@@ -18,6 +18,7 @@ import (
 	"time"
 	"ubible/database"
 	"ubible/models"
+	"ubible/services"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -70,6 +71,11 @@ type Room struct {
 	PlayersAnswered   map[string]bool `json:"players_answered"` // playerID → has answered current Q
 	PlayerScores      map[string]int  `json:"player_scores"`    // playerID → current score
 
+	// Message ordering and replay
+	MessageSeq      int64                    `json:"-"` // Monotonic sequence counter for message ordering
+	MessageHistory  []Message                `json:"-"` // Recent messages for replay (bounded buffer)
+	MaxHistorySize  int                      `json:"-"` // Max messages to keep in history
+
 	mu sync.RWMutex
 }
 
@@ -85,8 +91,10 @@ type GameSession struct {
 }
 
 type Message struct {
-	Type    string      `json:"type"`
-	Payload interface{} `json:"payload"`
+	Type      string      `json:"type"`
+	Payload   interface{} `json:"payload"`
+	Seq       int64       `json:"seq,omitempty"`       // Message sequence number for ordering
+	Timestamp int64       `json:"timestamp,omitempty"` // Unix timestamp in milliseconds
 }
 
 var (
@@ -442,6 +450,24 @@ func (p *Player) sendMessage(msgType string, payload interface{}) {
 	}
 }
 
+// sendMessageWithSeq queues a message with sequence number and timestamp
+func (p *Player) sendMessageWithSeq(msgType string, payload interface{}, seq int64, timestamp int64) {
+	msg := Message{
+		Type:      msgType,
+		Payload:   payload,
+		Seq:       seq,
+		Timestamp: timestamp,
+	}
+
+	select {
+	case p.send <- msg:
+		// Message queued successfully
+	default:
+		// Send buffer full - drop message and log warning
+		log.Printf("⚠️ Send buffer full for player %s, dropping message type: %s [seq=%d]", p.ID, msgType, seq)
+	}
+}
+
 func handleMessage(player *Player, msg Message) {
 	switch msg.Type {
 	case "create_room":
@@ -580,6 +606,9 @@ func handleCreateRoom(player *Player, payload interface{}) {
 		CurrentQuestion: 0,
 		PlayersAnswered: make(map[string]bool),
 		PlayerScores:    make(map[string]int),
+		MessageSeq:      0,
+		MessageHistory:  make([]Message, 0),
+		MaxHistorySize:  50, // Keep last 50 messages for replay
 	}
 
 	// Create game session for access control
@@ -605,6 +634,12 @@ func handleCreateRoom(player *Player, payload interface{}) {
 	log.Printf("✅ [CREATE_ROOM] Room created: code=%s, gameID=%s, gameURL=%s", roomCode, gameID, room.GameURL)
 	log.Printf("📊 [ROOM_STATS] Total active rooms: %d", totalRooms)
 
+	// 📊 DATABASE: Create game record
+	_, err := services.MultiplayerDB.CreateGame(gameID, roomCode, room.GameURL, player.ID, maxPlayers, questionCount, timeLimit, selectedThemes)
+	if err != nil {
+		log.Printf("⚠️ Failed to create game in database: %v", err)
+	}
+
 	room.mu.Lock()
 	room.Players[player.ID] = player
 	room.mu.Unlock()
@@ -617,6 +652,18 @@ func handleCreateRoom(player *Player, payload interface{}) {
 	player.mu.Unlock()
 
 	log.Printf("✅ [CREATE_ROOM] Host %s added to room %s", player.Username, roomCode)
+
+	// 📊 DATABASE: Add host as player
+	_, err = services.MultiplayerDB.AddPlayer(gameID, player.ID, player.Username, player.UserID, player.IsGuest, true, hostIsPlaying)
+	if err != nil {
+		log.Printf("⚠️ Failed to add host to database: %v", err)
+	}
+
+	// 📊 DATABASE: Log room creation event
+	services.MultiplayerDB.LogEvent(gameID, "room_created", player.ID, nil, map[string]interface{}{
+		"room_code":   roomCode,
+		"max_players": maxPlayers,
+	}, 0)
 
 	player.sendMessage("room_created", map[string]interface{}{
 		"room_code":   roomCode,
@@ -803,15 +850,29 @@ func handleReconnect(player *Player, payload interface{}) {
 	currentQuestion := targetRoom.CurrentQuestion
 	questionCount := targetRoom.QuestionCount
 	roomState := targetRoom.State
+	currentSeq := targetRoom.MessageSeq
 	playerScores := make(map[string]int)
 	for pid, score := range targetRoom.PlayerScores {
 		playerScores[pid] = score
+	}
+	playersAnswered := make(map[string]bool)
+	for pid, answered := range targetRoom.PlayersAnswered {
+		playersAnswered[pid] = answered
+	}
+	// Calculate time remaining for current question
+	timeRemaining := 0
+	if !targetRoom.QuestionStartTime.IsZero() && targetRoom.TimeLimit > 0 {
+		elapsed := time.Since(targetRoom.QuestionStartTime).Seconds()
+		timeRemaining = int(float64(targetRoom.TimeLimit) - elapsed)
+		if timeRemaining < 0 {
+			timeRemaining = 0
+		}
 	}
 	targetRoom.mu.RUnlock()
 
 	isGameStarted := roomState == "playing"
 
-	// Send confirmation with full game state
+	// Send confirmation with full game state snapshot
 	player.sendMessage("reconnected", map[string]interface{}{
 		"game_id":          gameID,
 		"room_code":        targetRoom.Code,
@@ -820,15 +881,19 @@ func handleReconnect(player *Player, payload interface{}) {
 		"current_question": currentQuestion,
 		"question_count":   questionCount,
 		"player_scores":    playerScores,
+		"players_answered": playersAnswered,
+		"time_remaining":   timeRemaining,
+		"current_seq":      currentSeq, // Client can detect missing messages
 		"players":          getPlayerList(targetRoom),
 	})
 
 	// If game is in progress, send current question to help client sync
 	if isGameStarted && currentQuestion < questionCount {
-		log.Printf("📍 Sending current question sync: Q%d/%d", currentQuestion+1, questionCount)
+		log.Printf("📍 Sending current question sync: Q%d/%d (time remaining: %ds)", currentQuestion+1, questionCount, timeRemaining)
 		player.sendMessage("question_sync", map[string]interface{}{
 			"question_index": currentQuestion,
 			"total":          questionCount,
+			"time_remaining": timeRemaining,
 		})
 	}
 }
@@ -1488,17 +1553,40 @@ func startGame(room *Room) {
 }
 
 // broadcastToRoom sends a message to all players in a room (non-blocking)
+// with sequence number for message ordering
 func broadcastToRoom(room *Room, msgType string, payload interface{}) {
-	room.mu.RLock()
-	defer room.mu.RUnlock()
+	room.mu.Lock()
+	// Increment sequence number
+	room.MessageSeq++
+	seq := room.MessageSeq
+	timestamp := time.Now().UnixMilli()
+
+	// Create message with sequence and timestamp
+	msg := Message{
+		Type:      msgType,
+		Payload:   payload,
+		Seq:       seq,
+		Timestamp: timestamp,
+	}
+
+	// Add to history (bounded buffer)
+	room.MessageHistory = append(room.MessageHistory, msg)
+	if len(room.MessageHistory) > room.MaxHistorySize {
+		// Keep only the most recent messages
+		room.MessageHistory = room.MessageHistory[len(room.MessageHistory)-room.MaxHistorySize:]
+	}
 
 	recipientCount := len(room.Players)
-	log.Printf("📤 Broadcasting '%s' to room %s (%d recipients)", msgType, room.Code, recipientCount)
+	room.mu.Unlock()
+
+	log.Printf("📤 Broadcasting '%s' to room %s (%d recipients) [seq=%d]", msgType, room.Code, recipientCount, seq)
 
 	// Non-blocking broadcast - one slow player doesn't affect others
+	room.mu.RLock()
 	for _, p := range room.Players {
-		p.sendMessage(msgType, payload)
+		p.sendMessageWithSeq(msgType, payload, seq, timestamp)
 	}
+	room.mu.RUnlock()
 }
 
 // broadcastRoomUpdate sends room state to all players (non-blocking)

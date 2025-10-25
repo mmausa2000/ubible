@@ -2,12 +2,15 @@
 package handlers
 
 import (
+	"encoding/json"
+	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"ubible/database"
+	"ubible/middleware"
 	"ubible/models"
-
-	"github.com/gofiber/fiber/v2"
+	"ubible/utils"
 )
 
 type PracticeCard struct {
@@ -66,26 +69,87 @@ func reconstructVerse(q models.Question) (string, bool) {
 		return strings.TrimSpace(trimmed), true
 	}
 
-	return txt, false
-}
-
-func GetPracticeCards(c *fiber.Ctx) error {
-	db := database.GetDB()
-	if db == nil {
-		return c.Status(500).JSON(fiber.Map{"success": false, "error": "Database not available"})
+	// If the correct_answer is the same as the reference, this is a "reference identification" question
+	// Skip these as they don't contain verse text
+	if strings.TrimSpace(q.CorrectAnswer) == strings.TrimSpace(q.Reference) {
+		return "", false
 	}
 
-	themeID := c.Query("theme_id", "")
-	limit := c.QueryInt("limit", 200)
-	offset := c.QueryInt("offset", 0)
+	// NEW: Extract verse portion before question marks
+	// Example: "In the beginning, God created the heavens and the earth. What was...?"
+	// Extract: "In the beginning, God created the heavens and the earth."
+	if strings.Contains(txt, "?") {
+		// Look for common question starters and cut before them
+		questionStarters := []string{
+			" What ", " Who ", " Where ", " When ", " Why ", " How ",
+			" Which ", " Did ", " Does ", " Do ", " Is ", " Are ",
+			" Was ", " Were ", " Can ", " Could ", " Should ", " Would ",
+		}
+
+		// Find the FIRST occurrence of any question starter
+		cutIndex := -1
+		for _, starter := range questionStarters {
+			if i := strings.Index(txt, starter); i > 0 {
+				if cutIndex == -1 || i < cutIndex {
+					cutIndex = i
+				}
+			}
+		}
+
+		if cutIndex > 0 {
+			verse := strings.TrimSpace(txt[:cutIndex])
+			// Ensure it's substantial enough and not just a reference
+			if len(verse) > 20 {
+				return verse, true
+			}
+		}
+
+		// If no question starter found, return empty to skip this question
+		return "", false
+	}
+
+	// Last resort: if text doesn't contain a question mark and looks like a verse, use it
+	if len(txt) > 20 && len(txt) < 500 {
+		return txt, true
+	}
+
+	return "", false
+}
+
+func GetPracticeCards(w http.ResponseWriter, r *http.Request) {
+	db := database.GetDB()
+	if db == nil {
+		utils.JSONError(w, http.StatusInternalServerError, "Database not available")
+		return
+	}
+
+	themeID := utils.Query(r, "theme_id", "")
+	limit, _ := strconv.Atoi(utils.Query(r, "limit", "200"))
+	offset, _ := strconv.Atoi(utils.Query(r, "offset", "0"))
 
 	var questions []models.Question
 	query := db.Model(&models.Question{}).Preload("Theme")
+
+	// If specific theme requested, use it
 	if themeID != "" {
 		query = query.Where("theme_id = ?", themeID)
+	} else {
+		// Otherwise, filter by user's selected themes if user is authenticated
+		userID, err := middleware.GetUserID(r)
+		if err == nil && userID > 0 {
+			var user models.User
+			if err := db.First(&user, userID).Error; err == nil && user.SelectedThemes != "" {
+				var selectedThemes []int
+				if err := json.Unmarshal([]byte(user.SelectedThemes), &selectedThemes); err == nil && len(selectedThemes) > 0 {
+					query = query.Where("theme_id IN ?", selectedThemes)
+				}
+			}
+		}
 	}
+
 	if err := query.Limit(limit).Offset(offset).Find(&questions).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{"success": false, "error": "Failed to fetch verses"})
+		utils.JSONError(w, http.StatusInternalServerError, "Failed to fetch verses")
+		return
 	}
 
 	cards := make([]PracticeCard, 0, len(questions))
@@ -115,9 +179,9 @@ func GetPracticeCards(c *fiber.Ctx) error {
 		})
 	}
 
-	c.Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
-	c.Set("Content-Type", "application/json; charset=utf-8")
-	return c.JSON(fiber.Map{
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
 		"success": true,
 		"cards":   cards,
 		"count":   len(cards),

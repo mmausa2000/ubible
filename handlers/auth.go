@@ -1,17 +1,16 @@
 // ~/Documents/CODING/ubible/handlers/auth.go
-// Complete file with fixed GuestLogin
-
 package handlers
 
 import (
+	"fmt"
+	"net/http"
+	"os"
+	"time"
 	"ubible/database"
 	"ubible/middleware"
 	"ubible/models"
-	"fmt"
-	"os"
-	"time"
+	"ubible/utils"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -56,18 +55,18 @@ type UserInfo struct {
 }
 
 // GuestLogin creates a new guest session
-func GuestLogin(c *fiber.Ctx) error {
+func GuestLogin(w http.ResponseWriter, r *http.Request) {
 	var req GuestLoginRequest
-	
-	// ✅ FIX: Don't fail on empty body - Fiber will leave req empty if body is {}
-	_ = c.BodyParser(&req)
+	// Don't fail on empty body
+	_ = utils.ParseJSON(r, &req)
 
 	db := database.GetDB()
 	if db == nil {
-		return c.Status(500).JSON(AuthResponse{
+		utils.JSON(w, http.StatusInternalServerError, AuthResponse{
 			Success: false,
 			Error:   "Database not available",
 		})
+		return
 	}
 
 	// Generate guest name if not provided
@@ -91,19 +90,21 @@ func GuestLogin(c *fiber.Ctx) error {
 	}
 
 	if err := db.Create(&user).Error; err != nil {
-		return c.Status(500).JSON(AuthResponse{
+		utils.JSON(w, http.StatusInternalServerError, AuthResponse{
 			Success: false,
 			Error:   "Failed to create guest account",
 		})
+		return
 	}
 
 	// Generate JWT token
 	token, err := generateToken(user)
 	if err != nil {
-		return c.Status(500).JSON(AuthResponse{
+		utils.JSON(w, http.StatusInternalServerError, AuthResponse{
 			Success: false,
 			Error:   "Failed to generate token",
 		})
+		return
 	}
 
 	email := ""
@@ -111,7 +112,7 @@ func GuestLogin(c *fiber.Ctx) error {
 		email = *user.Email
 	}
 
-	return c.JSON(AuthResponse{
+	utils.JSON(w, http.StatusOK, AuthResponse{
 		Success: true,
 		Token:   token,
 		User: UserInfo{
@@ -127,44 +128,49 @@ func GuestLogin(c *fiber.Ctx) error {
 }
 
 // Login authenticates a registered user
-func Login(c *fiber.Ctx) error {
+func Login(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(400).JSON(AuthResponse{
+	if err := utils.ParseJSON(r, &req); err != nil {
+		utils.JSON(w, http.StatusBadRequest, AuthResponse{
 			Success: false,
 			Error:   "Invalid request body",
 		})
+		return
 	}
 
 	if req.Username == "" || req.Password == "" {
-		return c.Status(400).JSON(AuthResponse{
+		utils.JSON(w, http.StatusBadRequest, AuthResponse{
 			Success: false,
 			Error:   "Username and password required",
 		})
+		return
 	}
 
 	db := database.GetDB()
 	if db == nil {
-		return c.Status(500).JSON(AuthResponse{
+		utils.JSON(w, http.StatusInternalServerError, AuthResponse{
 			Success: false,
 			Error:   "Database not available",
 		})
+		return
 	}
 
 	var user models.User
 	if err := db.Where("LOWER(username) = LOWER(?) AND is_guest = ?", req.Username, false).First(&user).Error; err != nil {
-		return c.Status(401).JSON(AuthResponse{
+		utils.JSON(w, http.StatusUnauthorized, AuthResponse{
 			Success: false,
 			Error:   "Invalid credentials",
 		})
+		return
 	}
 
 	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		return c.Status(401).JSON(AuthResponse{
+		utils.JSON(w, http.StatusUnauthorized, AuthResponse{
 			Success: false,
 			Error:   "Invalid credentials",
 		})
+		return
 	}
 
 	// Update last login
@@ -173,10 +179,11 @@ func Login(c *fiber.Ctx) error {
 	// Generate JWT token
 	token, err := generateToken(user)
 	if err != nil {
-		return c.Status(500).JSON(AuthResponse{
+		utils.JSON(w, http.StatusInternalServerError, AuthResponse{
 			Success: false,
 			Error:   "Failed to generate token",
 		})
+		return
 	}
 
 	email := ""
@@ -184,7 +191,7 @@ func Login(c *fiber.Ctx) error {
 		email = *user.Email
 	}
 
-	return c.JSON(AuthResponse{
+	utils.JSON(w, http.StatusOK, AuthResponse{
 		Success: true,
 		Token:   token,
 		User: UserInfo{
@@ -200,54 +207,60 @@ func Login(c *fiber.Ctx) error {
 }
 
 // Register creates a new user account
-func Register(c *fiber.Ctx) error {
+func Register(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(400).JSON(AuthResponse{
+	if err := utils.ParseJSON(r, &req); err != nil {
+		utils.JSON(w, http.StatusBadRequest, AuthResponse{
 			Success: false,
 			Error:   "Invalid request body",
 		})
+		return
 	}
 
 	// Validate input
 	if req.Username == "" || req.Password == "" {
-		return c.Status(400).JSON(AuthResponse{
+		utils.JSON(w, http.StatusBadRequest, AuthResponse{
 			Success: false,
 			Error:   "Username and password required",
 		})
+		return
 	}
 
 	if len(req.Password) < 6 {
-		return c.Status(400).JSON(AuthResponse{
+		utils.JSON(w, http.StatusBadRequest, AuthResponse{
 			Success: false,
 			Error:   "Password must be at least 6 characters",
 		})
+		return
 	}
 
 	db := database.GetDB()
 	if db == nil {
-		return c.Status(500).JSON(AuthResponse{
+		utils.JSON(w, http.StatusInternalServerError, AuthResponse{
 			Success: false,
 			Error:   "Database not available",
 		})
+		return
 	}
 
 	// Check if username already exists
 	var existingUser models.User
 	if err := db.Where("username = ?", req.Username).First(&existingUser).Error; err == nil {
-		return c.Status(400).JSON(AuthResponse{
+		utils.JSON(w, http.StatusBadRequest, AuthResponse{
 			Success: false,
 			Error:   "Username already taken",
 		})
+		return
 	}
 
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return c.Status(500).JSON(AuthResponse{
+		utils.JSON(w, http.StatusInternalServerError, AuthResponse{
 			Success: false,
 			Error:   "Failed to hash password",
 		})
+		return
 	}
 
 	// Create new user
@@ -262,22 +275,24 @@ func Register(c *fiber.Ctx) error {
 	}
 
 	if err := db.Create(&user).Error; err != nil {
-		return c.Status(500).JSON(AuthResponse{
+		utils.JSON(w, http.StatusInternalServerError, AuthResponse{
 			Success: false,
 			Error:   "Failed to create account",
 		})
+		return
 	}
 
 	// Generate JWT token
 	token, err := generateToken(user)
 	if err != nil {
-		return c.Status(500).JSON(AuthResponse{
+		utils.JSON(w, http.StatusInternalServerError, AuthResponse{
 			Success: false,
 			Error:   "Failed to generate token",
 		})
+		return
 	}
 
-	return c.JSON(AuthResponse{
+	utils.JSON(w, http.StatusOK, AuthResponse{
 		Success: true,
 		Token:   token,
 		User: UserInfo{
@@ -293,104 +308,114 @@ func Register(c *fiber.Ctx) error {
 }
 
 // UpgradeGuest converts a guest account to a registered account
-func UpgradeGuest(c *fiber.Ctx) error {
+func UpgradeGuest(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from JWT
-	userID, err := middleware.GetUserID(c)
+	userID, err := middleware.GetUserID(r)
 	if err != nil {
-		return c.Status(401).JSON(AuthResponse{
+		utils.JSON(w, http.StatusUnauthorized, AuthResponse{
 			Success: false,
 			Error:   "Unauthorized",
 		})
+		return
 	}
 
 	var req UpgradeGuestRequest
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(400).JSON(AuthResponse{
+	if err := utils.ParseJSON(r, &req); err != nil {
+		utils.JSON(w, http.StatusBadRequest, AuthResponse{
 			Success: false,
 			Error:   "Invalid request body",
 		})
+		return
 	}
 
-	// Validate input - align with Register requirements
+	// Validate input
 	if req.Username == "" || req.Password == "" || req.Email == "" {
-		return c.Status(400).JSON(AuthResponse{
+		utils.JSON(w, http.StatusBadRequest, AuthResponse{
 			Success: false,
 			Error:   "Username, email, and password are required",
 		})
+		return
 	}
 
 	if len(req.Password) < 6 {
-		return c.Status(400).JSON(AuthResponse{
+		utils.JSON(w, http.StatusBadRequest, AuthResponse{
 			Success: false,
 			Error:   "Password must be at least 6 characters",
 		})
+		return
 	}
 
 	db := database.GetDB()
 	if db == nil {
-		return c.Status(500).JSON(AuthResponse{
+		utils.JSON(w, http.StatusInternalServerError, AuthResponse{
 			Success: false,
 			Error:   "Database not available",
 		})
+		return
 	}
 
 	// Get guest user
 	var user models.User
 	if err := db.First(&user, userID).Error; err != nil {
-		return c.Status(404).JSON(AuthResponse{
+		utils.JSON(w, http.StatusNotFound, AuthResponse{
 			Success: false,
 			Error:   "User not found",
 		})
+		return
 	}
 
 	// Verify it's a guest account
 	if !user.IsGuest {
-		return c.Status(400).JSON(AuthResponse{
+		utils.JSON(w, http.StatusBadRequest, AuthResponse{
 			Success: false,
 			Error:   "Account is already registered",
 		})
+		return
 	}
 
 	// Check if username already exists
 	var existingUser models.User
 	if err := db.Where("username = ? AND id != ?", req.Username, userID).First(&existingUser).Error; err == nil {
-		return c.Status(400).JSON(AuthResponse{
+		utils.JSON(w, http.StatusBadRequest, AuthResponse{
 			Success: false,
 			Error:   "Username already taken",
 		})
+		return
 	}
 
 	// Check if email already exists
 	var emailUser models.User
 	if err := db.Where("email = ? AND id != ?", req.Email, userID).First(&emailUser).Error; err == nil {
-		return c.Status(400).JSON(AuthResponse{
+		utils.JSON(w, http.StatusBadRequest, AuthResponse{
 			Success: false,
 			Error:   "Email already in use",
 		})
+		return
 	}
 
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return c.Status(500).JSON(AuthResponse{
+		utils.JSON(w, http.StatusInternalServerError, AuthResponse{
 			Success: false,
 			Error:   "Failed to hash password",
 		})
+		return
 	}
 
-	// Update user - use Save() instead of Updates() to handle unique email constraint
+	// Update user
 	user.Username = req.Username
 	user.Email = &req.Email
 	user.Password = string(hashedPassword)
 	user.IsGuest = false
 
 	if err := db.Save(&user).Error; err != nil {
-		// Log the actual error for debugging
 		fmt.Printf("Database error during upgrade: %v\n", err)
-		return c.Status(500).JSON(AuthResponse{
+		utils.JSON(w, http.StatusInternalServerError, AuthResponse{
 			Success: false,
 			Error:   "Failed to upgrade account. Please try again or contact support.",
 		})
+		return
 	}
 
 	// Reload user
@@ -399,10 +424,11 @@ func UpgradeGuest(c *fiber.Ctx) error {
 	// Generate new JWT token
 	token, err := generateToken(user)
 	if err != nil {
-		return c.Status(500).JSON(AuthResponse{
+		utils.JSON(w, http.StatusInternalServerError, AuthResponse{
 			Success: false,
 			Error:   "Failed to generate token",
 		})
+		return
 	}
 
 	email := ""
@@ -410,7 +436,7 @@ func UpgradeGuest(c *fiber.Ctx) error {
 		email = *user.Email
 	}
 
-	return c.JSON(AuthResponse{
+	utils.JSON(w, http.StatusOK, AuthResponse{
 		Success: true,
 		Token:   token,
 		User: UserInfo{

@@ -1,134 +1,127 @@
 package handlers
 
 import (
+	"net/http"
 	"time"
 	"ubible/database"
+	"ubible/middleware"
 	"ubible/models"
+	"ubible/utils"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )
 
 // GetOnlinePlayersCount returns the number of currently online players
-func GetOnlinePlayersCount(c *fiber.Ctx) error {
+func GetOnlinePlayersCount(w http.ResponseWriter, r *http.Request) {
 	db := database.GetDB()
 	if db == nil {
-		return c.Status(500).JSON(fiber.Map{
-			"success": false,
-			"error":   "Database not available",
-		})
+		utils.JSONError(w, http.StatusInternalServerError, "Database not available")
+		return
 	}
 
 	// Update current user's activity if authenticated
-	userID := c.Locals("userId")
-	if userID != nil {
+	userID, err := middleware.GetUserID(r)
+	if err == nil {
 		now := time.Now()
 		db.Model(&models.User{}).Where("id = ?", userID).Update("last_activity", now)
 	}
 
 	// Count users who have been active in the last 5 minutes
-	// This is a simple way to determine "online" status
 	cutoffTime := time.Now().Add(-5 * time.Minute)
 
 	var count int64
-	err := db.Model(&models.User{}).Where("last_activity > ?", cutoffTime).Count(&count).Error
+	err = db.Model(&models.User{}).Where("last_activity > ?", cutoffTime).Count(&count).Error
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"success": false,
-			"error":   "Failed to get online players count",
-		})
+		utils.JSONError(w, http.StatusInternalServerError, "Failed to get online players count")
+		return
 	}
 
-	return c.JSON(fiber.Map{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
 		"success": true,
 		"count":   count,
 	})
 }
 
 // GetLastPlayedTime returns the last played time for the current user
-func GetLastPlayedTime(c *fiber.Ctx) error {
+func GetLastPlayedTime(w http.ResponseWriter, r *http.Request) {
 	db := database.GetDB()
 	if db == nil {
-		return c.Status(500).JSON(fiber.Map{
-			"success": false,
-			"error":   "Database not available",
-		})
+		utils.JSONError(w, http.StatusInternalServerError, "Database not available")
+		return
 	}
 
 	// Get user ID from token (if authenticated)
-	userID := c.Locals("userId")
-	if userID == nil {
+	userID, err := middleware.GetUserID(r)
+	if err != nil {
 		// Return "Never" for unauthenticated users
-		return c.JSON(fiber.Map{
+		utils.JSON(w, http.StatusOK, map[string]interface{}{
 			"success":    true,
 			"lastPlayed": "Never",
 		})
+		return
 	}
 
 	var user models.User
-	err := db.Where("id = ?", userID).First(&user).Error
+	err = db.Where("id = ?", userID).First(&user).Error
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"success": false,
-			"error":   "Failed to get user data",
-		})
+		utils.JSONError(w, http.StatusInternalServerError, "Failed to get user data")
+		return
 	}
 
 	// Check if user has last_activity set
 	if user.LastActivity == nil {
-		return c.JSON(fiber.Map{
+		utils.JSON(w, http.StatusOK, map[string]interface{}{
 			"success":    true,
 			"lastPlayed": "Never",
 		})
+		return
 	}
 
 	// Format the last activity time
 	lastPlayed := user.LastActivity.Format("Jan 2, 2006 at 3:04 PM")
 
-	return c.JSON(fiber.Map{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
 		"success":    true,
 		"lastPlayed": lastPlayed,
 	})
 }
 
 // CheckActiveGame checks if user has an active game session
-func CheckActiveGame(c *fiber.Ctx) error {
+func CheckActiveGame(w http.ResponseWriter, r *http.Request) {
 	db := database.GetDB()
 	if db == nil {
-		return c.Status(500).JSON(fiber.Map{
-			"success": false,
-			"error":   "Database not available",
-		})
+		utils.JSONError(w, http.StatusInternalServerError, "Database not available")
+		return
 	}
 
-	userID := c.Locals("userId")
-	if userID == nil {
-		return c.JSON(fiber.Map{
-			"success":    true,
-			"hasActive":  false,
-			"sessionID":  nil,
+	userID, err := middleware.GetUserID(r)
+	if err != nil {
+		utils.JSON(w, http.StatusOK, map[string]interface{}{
+			"success":   true,
+			"hasActive": false,
+			"sessionID": nil,
 		})
+		return
 	}
 
 	var user models.User
-	err := db.Where("id = ?", userID).First(&user).Error
+	err = db.Where("id = ?", userID).First(&user).Error
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"success": false,
-			"error":   "Failed to get user data",
-		})
+		utils.JSONError(w, http.StatusInternalServerError, "Failed to get user data")
+		return
 	}
 
 	// Check if there's an active session and if it's still valid (within last 30 minutes)
 	if user.ActiveGameSession != nil && user.GameStartedAt != nil {
 		timeSinceStart := time.Since(*user.GameStartedAt)
 		if timeSinceStart < 30*time.Minute {
-			return c.JSON(fiber.Map{
-				"success":    true,
-				"hasActive":  true,
-				"sessionID":  *user.ActiveGameSession,
-				"startedAt":  user.GameStartedAt,
+			utils.JSON(w, http.StatusOK, map[string]interface{}{
+				"success":   true,
+				"hasActive": true,
+				"sessionID": *user.ActiveGameSession,
+				"startedAt": user.GameStartedAt,
 			})
+			return
 		} else {
 			// Clear stale session
 			db.Model(&user).Updates(map[string]interface{}{
@@ -138,7 +131,7 @@ func CheckActiveGame(c *fiber.Ctx) error {
 		}
 	}
 
-	return c.JSON(fiber.Map{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
 		"success":   true,
 		"hasActive": false,
 		"sessionID": nil,
@@ -146,44 +139,42 @@ func CheckActiveGame(c *fiber.Ctx) error {
 }
 
 // StartGameSession creates a new game session for the user
-func StartGameSession(c *fiber.Ctx) error {
+func StartGameSession(w http.ResponseWriter, r *http.Request) {
 	db := database.GetDB()
 	if db == nil {
-		return c.Status(500).JSON(fiber.Map{
-			"success": false,
-			"error":   "Database not available",
-		})
+		utils.JSONError(w, http.StatusInternalServerError, "Database not available")
+		return
 	}
 
-	userID := c.Locals("userId")
-	if userID == nil {
+	userID, err := middleware.GetUserID(r)
+	if err != nil {
 		// Generate a guest session ID
 		sessionID := uuid.New().String()
-		return c.JSON(fiber.Map{
+		utils.JSON(w, http.StatusOK, map[string]interface{}{
 			"success":   true,
 			"sessionID": sessionID,
 		})
+		return
 	}
 
 	var user models.User
-	err := db.Where("id = ?", userID).First(&user).Error
+	err = db.Where("id = ?", userID).First(&user).Error
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"success": false,
-			"error":   "Failed to get user data",
-		})
+		utils.JSONError(w, http.StatusInternalServerError, "Failed to get user data")
+		return
 	}
 
 	// Check if already has active session
 	if user.ActiveGameSession != nil && user.GameStartedAt != nil {
 		timeSinceStart := time.Since(*user.GameStartedAt)
 		if timeSinceStart < 30*time.Minute {
-			return c.Status(409).JSON(fiber.Map{
-				"success":    false,
-				"error":      "You are already playing a game",
-				"sessionID":  *user.ActiveGameSession,
-				"startedAt":  user.GameStartedAt,
+			utils.JSON(w, http.StatusConflict, map[string]interface{}{
+				"success":   false,
+				"error":     "You are already playing a game",
+				"sessionID": *user.ActiveGameSession,
+				"startedAt": user.GameStartedAt,
 			})
+			return
 		}
 	}
 
@@ -197,13 +188,11 @@ func StartGameSession(c *fiber.Ctx) error {
 	}).Error
 
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"success": false,
-			"error":   "Failed to create game session",
-		})
+		utils.JSONError(w, http.StatusInternalServerError, "Failed to create game session")
+		return
 	}
 
-	return c.JSON(fiber.Map{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
 		"success":   true,
 		"sessionID": sessionID,
 		"startedAt": now,
@@ -211,36 +200,32 @@ func StartGameSession(c *fiber.Ctx) error {
 }
 
 // EndGameSession clears the active game session
-func EndGameSession(c *fiber.Ctx) error {
+func EndGameSession(w http.ResponseWriter, r *http.Request) {
 	db := database.GetDB()
 	if db == nil {
-		return c.Status(500).JSON(fiber.Map{
-			"success": false,
-			"error":   "Database not available",
-		})
+		utils.JSONError(w, http.StatusInternalServerError, "Database not available")
+		return
 	}
 
-	userID := c.Locals("userId")
-	if userID == nil {
-		return c.JSON(fiber.Map{
+	userID, err := middleware.GetUserID(r)
+	if err != nil {
+		utils.JSON(w, http.StatusOK, map[string]interface{}{
 			"success": true,
 		})
+		return
 	}
 
-	err := db.Model(&models.User{}).Where("id = ?", userID).Updates(map[string]interface{}{
+	err = db.Model(&models.User{}).Where("id = ?", userID).Updates(map[string]interface{}{
 		"active_game_session": nil,
 		"game_started_at":     nil,
 	}).Error
 
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"success": false,
-			"error":   "Failed to end game session",
-		})
+		utils.JSONError(w, http.StatusInternalServerError, "Failed to end game session")
+		return
 	}
 
-	return c.JSON(fiber.Map{
+	utils.JSON(w, http.StatusOK, map[string]interface{}{
 		"success": true,
 	})
 }
-

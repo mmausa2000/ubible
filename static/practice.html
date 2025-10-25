@@ -1056,17 +1056,35 @@
         // Load themes into dropdown
         async function loadThemesDropdown() {
             try {
-                const response = await fetch('/api/themes');
-                const data = await response.json();
+                // First, get user's selected themes from preferences
+                const prefsResponse = await fetch('/api/auth/preferences');
+                const prefsData = await prefsResponse.json();
 
-                if (data.success && data.themes) {
+                let selectedThemeIds = [];
+                if (prefsData.success && prefsData.selected_themes) {
+                    selectedThemeIds = prefsData.selected_themes;
+                }
+
+                // Then get all available themes
+                const themesResponse = await fetch('/api/themes');
+                const themesData = await themesResponse.json();
+
+                if (themesData.success && themesData.themes) {
                     const selector = document.getElementById('themeSelector');
                     const urlParams = new URLSearchParams(window.location.search);
                     const urlThemeId = urlParams.get('theme');
 
+                    // Filter themes to only show user's selected themes
+                    let availableThemes = themesData.themes;
+                    if (selectedThemeIds.length > 0) {
+                        availableThemes = themesData.themes.filter(theme =>
+                            selectedThemeIds.includes(theme.id)
+                        );
+                    }
+
                     // Build options
-                    let options = '<option value="">All Themes</option>';
-                    data.themes.forEach(theme => {
+                    let options = '<option value="">All Selected Themes</option>';
+                    availableThemes.forEach(theme => {
                         const selected = urlThemeId && parseInt(urlThemeId) === theme.id ? 'selected' : '';
                         options += `<option value="${theme.id}" ${selected}>${theme.name}</option>`;
                     });
@@ -1077,9 +1095,30 @@
                     selector.addEventListener('change', () => {
                         loadVerses();
                     });
+
+                    // Show message if no themes selected
+                    if (availableThemes.length === 0) {
+                        selector.innerHTML = '<option value="">No themes selected - Go to Settings</option>';
+                        console.warn('No themes selected in user preferences');
+                    }
                 }
             } catch (error) {
                 console.error('Error loading themes:', error);
+                // Fallback to all themes if preferences fetch fails
+                try {
+                    const response = await fetch('/api/themes');
+                    const data = await response.json();
+                    if (data.success && data.themes) {
+                        const selector = document.getElementById('themeSelector');
+                        let options = '<option value="">All Themes</option>';
+                        data.themes.forEach(theme => {
+                            options += `<option value="${theme.id}">${theme.name}</option>`;
+                        });
+                        selector.innerHTML = options;
+                    }
+                } catch (fallbackError) {
+                    console.error('Fallback theme loading failed:', fallbackError);
+                }
             }
         }
 
