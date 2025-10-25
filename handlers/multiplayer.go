@@ -878,6 +878,13 @@ func handleSubmitAnswer(player *Player, payload interface{}) {
 		return
 	}
 
+	// Prevent duplicate answers for same question (CRITICAL FIX)
+	if room.PlayersAnswered[player.ID] {
+		log.Printf("↩️  Duplicate answer ignored for player %s on Q%d", player.ID, questionIndex)
+		room.mu.Unlock()
+		return
+	}
+
 	// Mark player as answered for current question
 	room.PlayersAnswered[player.ID] = true
 
@@ -916,16 +923,6 @@ func handleSubmitAnswer(player *Player, payload interface{}) {
 		"score":          playerTotalScore,     // Player's total score
 		"points_earned":  score,                // Points earned this question
 		"all_answered":   allAnswered,
-	})
-
-	// Also send as opponent_answered for legacy compatibility
-	broadcastToRoom(room, "opponent_answered", map[string]interface{}{
-		"playerId":      player.ID,
-		"username":      player.Username,
-		"questionIndex": questionIndex,
-		"correct":       isCorrect,
-		"score":         playerTotalScore,     // Player's total score
-		"allAnswered":   allAnswered,
 	})
 
 	log.Printf("📝 Player %s answered Q%d (correct: %v, score: %d) - %d/%d answered, allAnswered=%v",
@@ -1494,6 +1491,9 @@ func startGame(room *Room) {
 func broadcastToRoom(room *Room, msgType string, payload interface{}) {
 	room.mu.RLock()
 	defer room.mu.RUnlock()
+
+	recipientCount := len(room.Players)
+	log.Printf("📤 Broadcasting '%s' to room %s (%d recipients)", msgType, room.Code, recipientCount)
 
 	// Non-blocking broadcast - one slow player doesn't affect others
 	for _, p := range room.Players {

@@ -1772,7 +1772,15 @@
                     const game = JSON.parse(localStorage.getItem('multiplayerGame') || '{}');
                     const roomCode = MultiplayerState.roomCode || game.room_code || game.roomCode || null;
 
+                    // Validate room code before submitting
+                    if (!roomCode) {
+                        console.error('[Quiz] ❌ Cannot submit answer: No room code available');
+                        alert('Connection error. Please return to the main menu.');
+                        return;
+                    }
+
                     // Send single submit_answer event with points for THIS question only
+                    console.log('[Quiz] Submitting answer:', {roomCode, questionIndex: QuizState.currentQuestionIndex, score: pointsEarned});
                     MultiplayerState.ws.send(JSON.stringify({
                         type: 'submit_answer',
                         payload: {
@@ -1784,7 +1792,7 @@
                         }
                     }));
 
-                    MultiplayerState.sendScoreUpdate();
+                    // Don't send duplicate score_update - already sent in submit_answer
                 }
 
                 // Wait for server next_question event - no client-side advancement
@@ -2130,8 +2138,12 @@
                     const wsUrl = `${protocol}//${wsHost}/ws?player_id=${playerId}&username=${encodeURIComponent(username)}`;
                     console.log('[Quiz] Connecting with player_id:', playerId, 'room:', MultiplayerState.roomCode);
                     MultiplayerState.ws = new WebSocket(wsUrl);
+                    MultiplayerState.reconnectAttempts = 0;
 
                     MultiplayerState.ws.onopen = () => {
+                        console.log('[Quiz] ✅ WebSocket connected');
+                        MultiplayerState.reconnectAttempts = 0;
+
                         const gameId = game.gameId || game.game_id;
 
                         if (gameId) {
@@ -2150,6 +2162,32 @@
                                     payload: { room_code: rc }
                                 }));
                             }
+                        }
+                    };
+
+                    MultiplayerState.ws.onerror = (error) => {
+                        console.error('[Quiz] ❌ WebSocket error:', error);
+                    };
+
+                    MultiplayerState.ws.onclose = (event) => {
+                        console.log('[Quiz] WebSocket closed:', event.code, event.reason);
+
+                        // Don't reconnect if game completed or intentional close
+                        if (event.code === 1000) {
+                            console.log('[Quiz] Normal closure, not reconnecting');
+                            return;
+                        }
+
+                        // Attempt reconnection (max 3 tries)
+                        if (MultiplayerState.reconnectAttempts < 3) {
+                            MultiplayerState.reconnectAttempts++;
+                            console.log(`[Quiz] Reconnecting... (attempt ${MultiplayerState.reconnectAttempts}/3)`);
+                            setTimeout(() => {
+                                location.reload(); // Reload page to reconnect
+                            }, 2000);
+                        } else {
+                            console.error('[Quiz] Max reconnection attempts reached');
+                            alert('Connection lost. Please return to the main menu and try again.');
                         }
                     };
 
@@ -2213,8 +2251,14 @@
 
                                 // Game completion
                                 case 'game_complete': {
-                                    console.log('[Quiz] Game complete event received from server');
+                                    console.log('[Quiz] 🏁 Game complete event received from server');
                                     QuizState.clearTimer();
+
+                                    // Close WebSocket properly
+                                    if (MultiplayerState.ws) {
+                                        MultiplayerState.ws.close(1000, 'Game completed');
+                                    }
+
                                     // Let the quiz complete naturally
                                     break;
                                 }
@@ -2222,6 +2266,16 @@
                                 // Reconnection confirmation with game state
                                 case 'reconnected': {
                                     console.log('[Quiz] Reconnected to game:', payload);
+
+                                    // Validate reconnection success
+                                    if (!payload.success) {
+                                        console.error('[Quiz] ❌ Reconnection failed:', payload.error);
+                                        alert('Failed to reconnect to game. Please return to main menu.');
+                                        window.location.href = '/';
+                                        return;
+                                    }
+
+                                    console.log('[Quiz] ✅ Reconnection successful');
 
                                     // Restore player's score from server if available
                                     if (payload.player_scores && MultiplayerState.playerId) {
@@ -2233,9 +2287,18 @@
                                         }
                                     }
 
+                                    // Validate game state before syncing
                                     if (payload.game_started && payload.current_question !== undefined) {
-                                        console.log('[Quiz] Syncing to question', payload.current_question);
-                                        // Server will send question_sync next
+                                        const qIndex = payload.current_question;
+                                        const qCount = payload.question_count || QuizState.questions.length;
+
+                                        // Validate question index is in valid range
+                                        if (qIndex >= 0 && qIndex < qCount) {
+                                            console.log('[Quiz] Syncing to question', qIndex);
+                                            // Server will send question_sync next
+                                        } else {
+                                            console.warn('[Quiz] Invalid question index from server:', qIndex);
+                                        }
                                     }
                                     break;
                                 }
