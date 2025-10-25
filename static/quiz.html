@@ -2110,12 +2110,25 @@
                     }
                     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                     // game is already defined above, no need to redefine
-                    const playerId = localStorage.getItem('playerId');
+                    let playerId = localStorage.getItem('playerId');
+
+                    // Generate player ID if not exists or is null/undefined
+                    if (!playerId || playerId === 'null' || playerId === 'undefined') {
+                        playerId = 'player_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+                        localStorage.setItem('playerId', playerId);
+                        console.log('[Quiz] Generated new player ID:', playerId);
+                    }
+
                     const username = localStorage.getItem('playerName') || 'Player';
+
+                    // Store in MultiplayerState for later use
+                    MultiplayerState.playerId = playerId;
+                    MultiplayerState.roomCode = game.room_code || game.roomCode || null;
 
                     // ✅ Origin-aware WebSocket URL (port 4000 for localhost dev, same host for production)
                     const wsHost = window.location.hostname === 'localhost' ? 'localhost:4000' : window.location.host;
                     const wsUrl = `${protocol}//${wsHost}/ws?player_id=${playerId}&username=${encodeURIComponent(username)}`;
+                    console.log('[Quiz] Connecting with player_id:', playerId, 'room:', MultiplayerState.roomCode);
                     MultiplayerState.ws = new WebSocket(wsUrl);
 
                     MultiplayerState.ws.onopen = () => {
